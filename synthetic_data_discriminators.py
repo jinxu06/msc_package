@@ -44,8 +44,8 @@ class SyntheticDataDiscriminator:
         self.valid_data = data[data.shape[0]/2:, :]
         return data
 
-    def discriminate(self):
-        self.classifier.experiment(self.train_data[:, :-1], self.train_data[:, -1], self.valid_data[:, :-1], self.valid_data[:, -1])
+    def discriminate(self, quiet=False):
+        self.classifier.experiment(self.train_data[:, :-1], self.train_data[:, -1], self.valid_data[:, :-1], self.valid_data[:, -1], quiet=quiet)
 
         """
         if self.method == 'SVM':
