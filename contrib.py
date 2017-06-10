@@ -25,3 +25,22 @@ def train_dependency_networks(config, num_classes, train_inputs, train_targets, 
         valid_errors.append(e)
 
     return dns, sess, valid_errors
+
+def compare_datasets(inputs, targets, n_inputs, n_targets):
+    data = np.concatenate([inputs, targets[:,None], np.zeros((inputs.shape[0],1), dtype=np.int64)], axis=1)
+    n_data = np.concatenate([n_inputs, n_targets[:,None], np.ones((n_inputs.shape[0],1), dtype=np.int64)], axis=1)
+    all_data = np.concatenate([data, n_data], axis=0)
+    idx = np.lexsort(np.fliplr(all_data).T)
+    all_data = all_data[idx, :]
+    last_old = np.ones((all_data.shape[1],), dtype=np.int64)*2
+    new_data = []
+    for d in all_data:
+        is_new = d[-1]==1
+        if not is_new:
+            last_old = d
+        else:
+            if not (d[:-1]==last_old[:-1]).all():
+                new_data.append(d)
+    new_data = np.array(new_data)
+    ratio = new_data.shape[0] / float(n_inputs.shape[0])
+    return new_data, ratio

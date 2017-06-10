@@ -185,24 +185,26 @@ class MUNGESampler(Sampler):
     def draw_samples_for_one_round(self, reset=True):
 
         for i in range(self.cur_samples.shape[0]):
-            neighbors = np.argmin(self.cur_distance+
-                                  np.eye(self.cur_distance.shape[0]) * np.max(self.cur_distance, axis=0), axis=0)
+            neighbors = np.argmin(np.ma.masked_equal(self.cur_distance, 0.), axis=0)
             for idx, a in enumerate(self.attr_types):
                 begin = self.inputs_block[idx][0]
                 end = self.inputs_block[idx][1]
                 if a=='c' or a=='b':
                     if np.random.rand() < self.swap_prob:
-                        temp = self.cur_samples[i][begin:end].copy()
-                        self.cur_samples[i][begin:end] = self.cur_samples[neighbors[i]][begin:end].copy()
-                        self.cur_samples[neighbors[i]][begin:end] = temp
+                        if (self.cur_samples[i][begin:end]!=self.cur_samples[neighbors[i]][begin:end]).all():
+                            print self.cur_samples[i][begin:end]
+                            temp = self.cur_samples[i][begin:end].copy()
+                            self.cur_samples[i][begin:end] = self.cur_samples[neighbors[i]][begin:end].copy()
+                            self.cur_samples[neighbors[i]][begin:end] = temp
                 elif a=='r':
                     pass
                 else:
                     raise Exception("attr_type not found")
             self._update_distance([i, neighbors[i]])
+        ret_samples = self.cur_samples.copy()
         if reset:
             self.reset_initial_samples()
-        return self.cur_samples.copy()
+        return ret_samples
 
 
 
