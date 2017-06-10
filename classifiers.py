@@ -67,6 +67,7 @@ class HighPerformanceClassifier(object):
                     print s+"--------"
                     print "train acc:{0}({1}), valid acc:{2}({3})".format(train_acc, train_std, valid_acc, valid_std)
         print "\n{0} -- Best Accuracy: {1}({2})\n".format(type(self).__name__, self.best_valid_acc, self.best_valid_acc_std)
+        return self.best_valid_acc, self.best_valid_acc_std
 
 
 
