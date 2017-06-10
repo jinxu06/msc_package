@@ -3,7 +3,7 @@ import tensorflow as tf
 from dependency_network import DependencyNetwork
 
 
-def train_dependency_networks(config, num_classes, train_inputs, train_targets, valid_inputs, valid_targets, inputs_block, attr_types, max_num_epoch=500, early_stopping_lookahead=5):
+def train_dependency_networks(config, num_classes, train_inputs, train_targets, valid_inputs, valid_targets, inputs_block, attr_types, max_num_epoch=500, early_stopping_lookahead=5, quiet=False):
 
     graph = tf.Graph()
     dns = []
@@ -21,7 +21,7 @@ def train_dependency_networks(config, num_classes, train_inputs, train_targets, 
     valid_errors = []
     for i, dn in enumerate(dns):
         e = dn.train(train_inputs[train_targets==i, :], valid_inputs[valid_targets==i, :],
-                 num_epoch=max_num_epoch, batch_size=100, early_stopping_lookahead=early_stopping_lookahead)
+                 num_epoch=max_num_epoch, batch_size=100, early_stopping_lookahead=early_stopping_lookahead, quiet=quiet)
         valid_errors.append(e)
 
     return dns, sess, valid_errors
