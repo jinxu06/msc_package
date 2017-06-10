@@ -194,15 +194,17 @@ class DependencyNetwork:
             return True
         return False
 
-    def train(self, train_data, valid_data, num_epoch, batch_size=None, valid_freq=5, early_stopping_lookahead=None):
+    def train(self, train_data, valid_data, num_epoch, batch_size=None, valid_freq=5, early_stopping_lookahead=None, quiet=False):
         errors, accs = self.validate_epoch(valid_data, batch_size)
-        print "epoch {0} -- valid -- error:{1}, acc:{2}".format(0, errors.mean(), accs.mean())
+        if not quiet:
+            print "epoch {0} -- valid -- error:{1}, acc:{2}".format(0, errors.mean(), accs.mean())
 
         for i in range(num_epoch):
             errors, accs = self.train_epoch(train_data, batch_size)
             #print "epoch {0} -- train -- error:{1}, acc:{2}".format(i+1, errors.mean(), accs.mean())
             if (i+1)%valid_freq==0:
-                print "epoch {0} -- train -- error:{1}, acc:{2}".format(i+1, errors.mean(), accs.mean())
+                if not quiet:
+                    print "epoch {0} -- train -- error:{1}, acc:{2}".format(i+1, errors.mean(), accs.mean())
                 valid_errors, valid_accs = self.validate_epoch(valid_data, batch_size)
                 if early_stopping_lookahead is not None:
                     stop = self._monitor(valid_errors.mean(), early_stopping_lookahead)
@@ -210,7 +212,8 @@ class DependencyNetwork:
                         self._assign_all_params(self.historical_params[0])
                         print "Early Stopping at {0}, Valid Err {1}".format(i+1-valid_freq*early_stopping_lookahead, self.historical_valid_error[0])
                         return self.historical_valid_error[0]
-                print "epoch {0} -- valid -- error:{1}, acc:{2}".format(i+1, valid_errors.mean(), valid_accs.mean())
+                if not quiet:
+                    print "epoch {0} -- valid -- error:{1}, acc:{2}".format(i+1, valid_errors.mean(), valid_accs.mean())
         return valid_errors.mean()
 
     def query(self, query_data):

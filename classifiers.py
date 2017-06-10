@@ -44,7 +44,7 @@ class HighPerformanceClassifier(object):
     def rebuild_model(self):
         pass
 
-    def experiment(self, train_inputs, train_targets, valid_inputs, valid_targets, hyper_params_grid=None):
+    def experiment(self, train_inputs, train_targets, valid_inputs, valid_targets, hyper_params_grid=None, quiet=False):
 
         while self.grid_search():
             self.rebuild_model()
@@ -58,13 +58,14 @@ class HighPerformanceClassifier(object):
             if self.best_valid_acc < valid_acc:
                 self.best_valid_acc = valid_acc
                 self.best_valid_acc_std = valid_std
-            s = ""
-            for param in self.hyper_params:
-                s += param+"="
-                s += str(self.grid_search_params[param][self.grid_search_pos]) + " "
-            s = type(self).__name__ + "  " + s
-            print s+"--------"
-            print "train acc:{0}({1}), valid acc:{2}({3})".format(train_acc, train_std, valid_acc, valid_std)
+            if not quiet:
+                s = ""
+                for param in self.hyper_params:
+                    s += param+"="
+                    s += str(self.grid_search_params[param][self.grid_search_pos]) + " "
+                    s = type(self).__name__ + "  " + s
+                    print s+"--------"
+                    print "train acc:{0}({1}), valid acc:{2}({3})".format(train_acc, train_std, valid_acc, valid_std)
         print "\n{0} -- Best Accuracy: {1}({2})\n".format(type(self).__name__, self.best_valid_acc, self.best_valid_acc_std)
 
 
