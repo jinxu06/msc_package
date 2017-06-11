@@ -1,8 +1,13 @@
 import numpy as np
 import tensorflow as tf
+from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier as RFClassifier
+from sklearn.gaussian_process import GaussianProcessClassifier
+from sklearn.naive_bayes import MultinomialNB
+import itertools
 
 
-class DependencyNetwork:
+class DependencyNetwork(object):
 
     def __init__(self, inputs_block, attr_types, graph_config=None, graph=None, name="DN", random_seed=123):
 
@@ -221,4 +226,136 @@ class DependencyNetwork:
         if self.graph_config['mask_as_inputs']:
             feed_dict[self.graph_nodes['mask_inputs']] = 1-np.broadcast_to(self.masks, shape=(query_data.shape[0], self.masks.shape[0], self.masks.shape[1]))
         predictions = self.session.run(self.graph_nodes['predictions'], feed_dict=feed_dict)
+        return predictions
+
+
+
+class SklearnDependencyNetwork(DependencyNetwork):
+
+    def __init__(self, method, hyper_params, inputs_block, attr_types, name="DN", random_seed=123):
+        assert 'r' not in attr_types, "real value attributes are not allowd here"
+        self.attr_types = attr_types
+        self.num_attr = len(self.attr_types)
+        self.inputs_block = inputs_block
+        self.method = method
+        self.num_inputs = self.inputs_block[-1][1]
+        self.name = name
+        self.models = []
+        for i, block in enumerate(self.inputs_block):
+            self.models.append(self.method())
+            try:
+                self.models[-1].set_params(probability=True)
+            except:
+                pass
+
+        self._list_hyper_params(hyper_params)
+        self._define_masks()
+
+    def _list_hyper_params(self, hyper_params):
+        all_params = []
+        arr = []
+        for param in hyper_params:
+            arr.append(hyper_params[param])
+        for item in itertools.product(*arr):
+            params = {}
+            for i, param in enumerate(hyper_params):
+                params[param] = item[i]
+            all_params.append(params)
+
+        self.hyper_params = all_params
+
+
+    def _predict_proba(self, idx, train_inputs):
+        min_prob = 1e-5 / train_inputs.shape[0]
+        pred = self.models[idx].predict_proba(train_inputs)
+        pred = np.maximum(pred, min_prob)
+        classes = self.models[idx].classes_
+        if self.attr_types[idx]=='c':
+            num_classes = self.inputs_block[idx][1]-self.inputs_block[idx][0]
+        elif self.attr_types[idx]=='b':
+            num_classes = 2
+        predictions = np.zeros((train_inputs.shape[0], num_classes))
+        for c in range(num_classes):
+            if c in classes:
+                idx = list(classes).index(c)
+                predictions[:, c:c+1] = pred[:, idx:idx+1]
+            else:
+                predictions[:, c:c+1] = np.ones((pred.shape[0],1)) * min_prob
+        predictions = predictions.astype(np.float64)
+        predictions /= np.sum(predictions, axis=1)[:, None]
+        return predictions
+
+    def _train(self, train_data, batch_size=None):
+        errors = []
+        accs = []
+        for i, block in enumerate(self.inputs_block):
+            mask = self.masks[i]
+            train_inputs = train_data * mask
+            if self.attr_types[i]=='c':
+                train_targets = np.argmax(train_data[:, block[0]:block[1]], axis=1)
+            elif self.attr_types[i]=='b':
+                train_targets = train_data[:, block[0]]
+            self.models[i].fit(train_inputs, train_targets)
+            proba = self._predict_proba(i, train_inputs)
+            pred = self.models[i].predict(train_inputs)
+            error = 0.
+            for p, t in zip(proba, train_targets):
+                error += -np.log(p[t])
+            error /= train_inputs.shape[0]
+            acc = np.sum(pred==train_targets) / float(len(pred))
+            errors.append(error)
+            accs.append(acc)
+        return errors, accs
+
+
+    def _validate(self, valid_data):
+        errors = []
+        accs = []
+        for i, block in enumerate(self.inputs_block):
+            mask = self.masks[i]
+            valid_inputs = valid_data * mask
+            if self.attr_types[i]=='c':
+                valid_targets = np.argmax(valid_data[:, block[0]:block[1]], axis=1)
+            elif self.attr_types[i]=='b':
+                valid_targets = valid_data[:, block[0]]
+            proba = self._predict_proba(i, valid_inputs)
+            pred = self.models[i].predict(valid_inputs)
+            error = 0.
+            for p, t in zip(proba, valid_targets):
+                error += -np.log(p[t])
+            error /= valid_inputs.shape[0]
+            acc = np.sum(pred==valid_targets) / float(len(pred))
+            errors.append(error)
+            accs.append(acc)
+        return errors, accs
+
+    def train(self, train_data, valid_data, quiet=True):
+        valid_errors = []
+        valid_accs = []
+        params_choices = []
+        for params in self.hyper_params:
+            for model in self.models:
+                model.set_params(**params)
+            self._train(train_data)
+            errors, accs = self._validate(valid_data)
+            valid_errors.append(errors)
+            valid_accs.append(accs)
+
+        for i in np.argmin(valid_errors, axis=0):
+            params_choices.append(self.hyper_params[i])
+
+        for i, model in enumerate(self.models):
+            model.set_params(**params_choices[i])
+
+        self._train(train_data)
+        errors, accs = self._validate(valid_data)
+        print "valid -- error:{0}, acc:{1}".format(np.mean(errors), np.mean(accs))
+        return errors, accs
+
+    def query(self, query_data):
+        predictions = []
+        for i, model in enumerate(self.models):
+            mask = self.masks[i]
+            query_inputs = query_data * mask
+            predictions.append(self._predict_proba(i, query_inputs))
         return predictions
