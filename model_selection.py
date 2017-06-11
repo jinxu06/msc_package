@@ -29,7 +29,7 @@ class ModelSelection(object):
                     if item[0]==self.cur_hyper_params:
                         exist = True
                 if not exist:
-                    return self.cur_hyper_params
+                    return copy.copy(self.cur_hyper_params)
                 if len(self.performance_records)>=self.num_settings:
                     return None
 
