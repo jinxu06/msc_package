@@ -43,4 +43,4 @@ def compare_datasets(inputs, targets, n_inputs, n_targets):
                 new_data.append(d)
     new_data = np.array(new_data)
     ratio = new_data.shape[0] / float(n_inputs.shape[0])
-    return ratio, new_data[:,:-2], new_data[:,:-2]
+    return ratio, new_data[:,:-2], new_data[:,-2]
