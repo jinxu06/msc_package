@@ -90,9 +90,9 @@ def ensemble_query(dns_ens):
             results = []
             for dns in dns_ens:
                 results.append(dns[c].query(data))
-                mean_results = []
-                for i in range(len(results[0])):
-                    mean_results.append(np.stack([r[i] for r in results]).mean(0))
+            mean_results = []
+            for i in range(len(results[0])):
+                mean_results.append(np.stack([r[i] for r in results]).mean(0))
             return mean_results
         ret_funcs.append(ret_func)
     return ret_funcs
