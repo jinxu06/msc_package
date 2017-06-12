@@ -81,18 +81,23 @@ def bagging_train_dependency_networks(n_estimators, config, num_classes, train_i
         err_ens.append(np.mean(valid_errors))
     return dns_ens, sess_ens, err_ens
 
+class QueryFuncEnsemble(object):
+    
+    def __init__(self, dns_ens, class_index):
+        self.dns_ens = dns_ens
+        self.class_index = class_index
+        
+    def query(self, inputs):
+        results = []
+        for dns in self.dns_ens:
+            results.append(dns[self.class_index].query(inputs))
+        mean_results = []
+        for i in range(len(results[0])):
+            mean_results.append(np.stack([r[i] for r in results]).mean(0))
+        return mean_results
+                  
 
 def ensemble_query(dns_ens):
     num_classes = len(dns_ens[0])
-    ret_funcs = []
-    for c in range(num_classes):
-        def ret_func(data):
-            results = []
-            for dns in dns_ens:
-                results.append(dns[c].query(data))
-            mean_results = []
-            for i in range(len(results[0])):
-                mean_results.append(np.stack([r[i] for r in results]).mean(0))
-            return mean_results
-        ret_funcs.append(ret_func)
-    return ret_funcs
+    return [QueryFuncEnsemble(dns_ens, c).query for c in range(num_classes)]
+     
