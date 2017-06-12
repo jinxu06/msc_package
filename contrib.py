@@ -5,6 +5,7 @@ import time
 
 def train_dependency_networks(config, num_classes, train_inputs, train_targets, valid_inputs, valid_targets, inputs_block, attr_types, max_num_epoch=500, early_stopping_lookahead=5, quiet=False):
 
+    config['mask_as_inputs'] = config['weights_sharing']
     graph = tf.Graph()
     dns = []
     for i in range(num_classes):
@@ -82,12 +83,16 @@ def bagging_train_dependency_networks(n_estimators, config, num_classes, train_i
 
 
 def ensemble_query(dns_ens):
-    def ret_func(data, c):
-        results = []
-        for dns in dns_ens:
-            results.append(dns[c].query(data))
-        mean_results = []
-        for i in range(len(results[0])):
-            mean_results.append(np.stack([r[i] for r in results]).mean(0))
-        return mean_results
-    return ret_func
+    num_classes = len(dns_ens[0])
+    ret_funcs = []
+    for c in range(num_classes):
+        def ret_func(data):
+            results = []
+            for dns in dns_ens:
+                results.append(dns[c].query(data))
+                mean_results = []
+                for i in range(len(results[0])):
+                    mean_results.append(np.stack([r[i] for r in results]).mean(0))
+            return mean_results
+        ret_funcs.append(ret_func)
+    return ret_funcs
