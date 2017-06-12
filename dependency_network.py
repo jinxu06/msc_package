@@ -180,14 +180,17 @@ class DependencyNetwork(object):
         return np.array(errors).mean(0), np.array(accs).mean(0)
 
     def _get_all_params(self):
-        vals = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.name)
-        return self.session.run(vals)
+        with self.graph.as_default():
+            vals = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.name)
+            return self.session.run(vals)
 
     def _assign_all_params(self, values):
-        vals = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.name)
-        opts = [val.assign(value) for val, value in zip(vals, values)]
-        opt = tf.group(*opts)
-        self.session.run(opt)
+        with self.graph.as_default():
+            vals = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.name)
+            with tf.variable_scope(self.name):
+                opts = [val.assign(value) for val, value in zip(vals, values)]
+                opt = tf.group(*opts)
+                self.session.run(opt)
 
     def _monitor(self, valid_err, early_stopping_lookahead):
         if not len(self.historical_params) < early_stopping_lookahead+1:
