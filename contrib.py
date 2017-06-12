@@ -8,7 +8,7 @@ def train_dependency_networks(config, num_classes, train_inputs, train_targets, 
     graph = tf.Graph()
     dns = []
     for i in range(num_classes):
-        dn = DependencyNetwork(inputs_block, attr_types, graph=graph, graph_config=config, name="{0}-DN{1}".format(hash(time.time()), i+1))
+        dn = DependencyNetwork(inputs_block, attr_types, graph=graph, graph_config=config, name="DN{0}-{1}".format(hash(time.time()), i+1))
         dns.append(dn)
     sess = tf.Session(graph=graph)
     with graph.as_default():
