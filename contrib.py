@@ -10,7 +10,7 @@ def train_dependency_networks(config, num_classes, train_inputs, train_targets, 
     for i in range(num_classes):
         dn = DependencyNetwork(inputs_block, attr_types, graph=graph, graph_config=config, name="DN{0}".format(i+1))
         dns.append(dn)
-    sess = tf.InteractiveSession(graph=graph)
+    sess = tf.Session(graph=graph)
     with graph.as_default():
         init = tf.global_variables_initializer()
     sess.run(init)
@@ -54,7 +54,7 @@ def resample_with_replacement(inputs, targets):
     return new_inputs, new_targets, remain_inputs, remain_targets
 
 
-def K_fold_train_dependency_networks(K, config, num_classes, train_inputs, train_targets, valid_inputs, valid_targets, inputs_block, attr_types, max_num_epoch=500, early_stopping_lookahead=5, quiet=False):
+def K_fold_train_dependency_networks(K, config, num_classes, train_inputs, train_targets, inputs_block, attr_types, max_num_epoch=500, early_stopping_lookahead=5, quiet=False):
     dns_ens = []
     sess_ens = []
     err_ens = []
@@ -68,7 +68,7 @@ def K_fold_train_dependency_networks(K, config, num_classes, train_inputs, train
         err_ens.append(np.mean(valid_errors))
     return dns_ens, sess_ens, err_ens
 
-def bagging_train_dependency_networks(n_estimators, config, num_classes, train_inputs, train_targets, valid_inputs, valid_targets, inputs_block, attr_types, max_num_epoch=500, early_stopping_lookahead=5, quiet=False):
+def bagging_train_dependency_networks(n_estimators, config, num_classes, train_inputs, train_targets, inputs_block, attr_types, max_num_epoch=500, early_stopping_lookahead=5, quiet=False):
     dns_ens = []
     sess_ens = []
     err_ens = []
