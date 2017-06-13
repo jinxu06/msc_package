@@ -43,18 +43,18 @@ def train_flexible_dependency_networks(configs, num_classes, train_inputs, train
         errors.append(e)
     return fdns, sess, errors
 
-def K_fold_train_flexible_dependency_networks(K, configs, num_classes, train_inputs, train_targets, inputs_block, attr_types, max_num_epoch=500, valid_freq=5, early_stopping_lookahead=5, quiet=False):
+def K_fold_train_flexible_dependency_networks(K, max_k, configs, num_classes, train_inputs, train_targets, inputs_block, attr_types, max_num_epoch=500, valid_freq=5, early_stopping_lookahead=5, quiet=False):
     dns_ens = []
     sess_ens = []
     err_ens = []
-    for k in range(K):
+    for k in range(min(K, max_k)):
         valid_index = range(k,train_inputs.shape[0],K)
         t_inputs, t_targets = np.delete(train_inputs, valid_index, axis=0), np.delete(train_targets, valid_index, axis=0)
         v_inputs, v_targets = train_inputs[valid_index,:], train_targets[valid_index]
         dns, sess, valid_errors = train_flexible_dependency_networks(configs, num_classes, t_inputs, t_targets, v_inputs, v_targets, inputs_block, attr_types, max_num_epoch, valid_freq, early_stopping_lookahead, quiet)
         dns_ens.append(dns)
         sess_ens.append(sess)
-        err_ens.append(np.mean(valid_errors))
+        err_ens.append(valid_errors)
     return dns_ens, sess_ens, err_ens
 
 
