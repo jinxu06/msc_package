@@ -389,7 +389,8 @@ class MLPClassifier(object):
                     stop = self._monitor(valid_error, early_stopping_lookahead)
                     if stop:
                         self._assign_all_params(self.historical_params[0])
-                        print "Early Stopping at {0}, Valid Err {1}".format(i+1-valid_freq*early_stopping_lookahead, self.historical_valid_error[0])
+                        if not quiet:
+                            print "Early Stopping at {0}, Valid Err {1}".format(i+1-valid_freq*early_stopping_lookahead, self.historical_valid_error[0])
                         return self.historical_valid_error[0]
                 if not quiet:
                     print "epoch {0} -- valid -- error:{1}, acc:{2}".format(i+1, valid_error, valid_acc)

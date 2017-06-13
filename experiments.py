@@ -28,7 +28,7 @@ def train_dependency_networks(config, num_classes, train_inputs, train_targets, 
     return dns, sess, valid_errors
 
 
-def train_flexible_dependency_networks(configs, num_classes, train_inputs, train_targets, valid_inputs, valid_targets, inputs_block, attr_types, max_num_epoch=500, early_stopping_lookahead=5, quiet=False):
+def train_flexible_dependency_networks(configs, num_classes, train_inputs, train_targets, valid_inputs, valid_targets, inputs_block, attr_types, max_num_epoch=500, valid_freq=5, early_stopping_lookahead=5, quiet=False):
     graph = tf.Graph()
     sess = tf.InteractiveSession(graph=graph)
     fdns = []
@@ -39,11 +39,11 @@ def train_flexible_dependency_networks(configs, num_classes, train_inputs, train
     errors = []
     for i, fdn in enumerate(fdns):
         e = fdn.train(train_inputs[train_targets==i, :], valid_inputs[valid_targets==i, :],
-                max_num_epoch=max_num_epoch, early_stopping_lookahead=early_stopping_lookahead, quiet=quiet)
+                max_num_epoch=max_num_epoch, valid_freq=valid_freq, early_stopping_lookahead=early_stopping_lookahead, quiet=quiet)
         errors.append(e)
     return fdns, sess, errors
 
-def K_fold_train_flexible_dependency_networks(K, configs, num_classes, train_inputs, train_targets, inputs_block, attr_types, max_num_epoch=500, early_stopping_lookahead=5, quiet=False):
+def K_fold_train_flexible_dependency_networks(K, configs, num_classes, train_inputs, train_targets, inputs_block, attr_types, max_num_epoch=500, valid_freq=5, early_stopping_lookahead=5, quiet=False):
     dns_ens = []
     sess_ens = []
     err_ens = []
@@ -51,7 +51,7 @@ def K_fold_train_flexible_dependency_networks(K, configs, num_classes, train_inp
         valid_index = range(k,train_inputs.shape[0],K)
         t_inputs, t_targets = np.delete(train_inputs, valid_index, axis=0), np.delete(train_targets, valid_index, axis=0)
         v_inputs, v_targets = train_inputs[valid_index,:], train_targets[valid_index]
-        dns, sess, valid_errors = train_flexible_dependency_networks(configs, num_classes, t_inputs, t_targets, v_inputs, v_targets, inputs_block, attr_types, max_num_epoch, early_stopping_lookahead, quiet)
+        dns, sess, valid_errors = train_flexible_dependency_networks(configs, num_classes, t_inputs, t_targets, v_inputs, v_targets, inputs_block, attr_types, max_num_epoch, valid_freq, early_stopping_lookahead, quiet)
         dns_ens.append(dns)
         sess_ens.append(sess)
         err_ens.append(np.mean(valid_errors))
