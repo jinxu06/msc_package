@@ -32,8 +32,10 @@ def train_flexible_dependency_networks(configs, num_classes, train_inputs, train
     graph = tf.Graph()
     sess = tf.InteractiveSession(graph=graph)
     fdns = []
+    if type(configs[0])!=list or len(configs)!=num_classes:
+        configs = [configs for i in range(num_classes)]
     for i in range(num_classes):
-        fdn = FlexibleDependencyNetwork(inputs_block, attr_types, configs, graph=graph, session=sess, name="FDN{0}-{1}".format(hash(time.time()), i))
+        fdn = FlexibleDependencyNetwork(inputs_block, attr_types, configs[i], graph=graph, session=sess, name="FDN{0}-{1}".format(hash(time.time()), i))
         fdns.append(fdn)
 
     errors = []
