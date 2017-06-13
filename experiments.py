@@ -28,7 +28,7 @@ def train_dependency_networks(config, num_classes, train_inputs, train_targets, 
     return dns, sess, valid_errors
 
 
-def train_flexible_dependency_network(configs, num_classes, train_inputs, train_targets, valid_inputs, valid_targets, inputs_block, attr_types, max_num_epoch=500, early_stopping_lookahead=5, quiet=False):
+def train_flexible_dependency_networks(configs, num_classes, train_inputs, train_targets, valid_inputs, valid_targets, inputs_block, attr_types, max_num_epoch=500, early_stopping_lookahead=5, quiet=False):
     graph = tf.Graph()
     sess = tf.InteractiveSession(graph=graph)
     fdns = []
