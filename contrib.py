@@ -2,6 +2,7 @@ import numpy as np
 import tensorflow as tf
 from dependency_network import DependencyNetwork
 import time
+import itertools
 
 def train_dependency_networks(config, num_classes, train_inputs, train_targets, valid_inputs, valid_targets, inputs_block, attr_types, max_num_epoch=500, early_stopping_lookahead=5, quiet=False):
 
@@ -82,11 +83,11 @@ def bagging_train_dependency_networks(n_estimators, config, num_classes, train_i
     return dns_ens, sess_ens, err_ens
 
 class QueryFuncEnsemble(object):
-    
+
     def __init__(self, dns_ens, class_index):
         self.dns_ens = dns_ens
         self.class_index = class_index
-        
+
     def query(self, inputs):
         results = []
         for dns in self.dns_ens:
@@ -95,9 +96,27 @@ class QueryFuncEnsemble(object):
         for i in range(len(results[0])):
             mean_results.append(np.stack([r[i] for r in results]).mean(0))
         return mean_results
-                  
+
 
 def ensemble_query(dns_ens):
     num_classes = len(dns_ens[0])
     return [QueryFuncEnsemble(dns_ens, c).query for c in range(num_classes)]
-     
+
+
+
+
+def enumerate_parameters(params_choices, key_order=None):
+    if key_order is None:
+        keys = list(params_choices.keys())
+    else:
+        keys = key_order
+    arr = []
+    for key in keys:
+        arr.append(params_choices[key])
+    all_choices = []
+    for params in list(itertools.product(*arr)):
+        dic = {}
+        for i in range(len(keys)):
+            dic[keys[i]] = params[i]
+        all_choices.append(dic)
+    return all_choices

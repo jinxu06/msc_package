@@ -5,6 +5,14 @@ from sklearn.ensemble import RandomForestClassifier as RFClassifier
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.naive_bayes import MultinomialNB
 import itertools
+import time
+from contrib import enumerate_parameters
+
+
+
+
+
+
 
 
 class DependencyNetwork(object):
@@ -101,7 +109,7 @@ class DependencyNetwork(object):
             accuracies = []
             for i, t in enumerate(self.attr_types):
                 if t=='b':
-                    targets = tf.slice(nodes["inputs"], [0, i], [-1, 1])
+                    targets = tf.slice(nodes["inputs"], [0, i], [-1, 1]) # This seems to be wrong when attr_type is mixed
                     targets = tf.concat([1-targets, targets], axis=1)
                     num_outputs = 2
                 elif t=='c':
@@ -230,6 +238,233 @@ class DependencyNetwork(object):
             feed_dict[self.graph_nodes['mask_inputs']] = 1-np.broadcast_to(self.masks, shape=(query_data.shape[0], self.masks.shape[0], self.masks.shape[1]))
         predictions = self.session.run(self.graph_nodes['predictions'], feed_dict=feed_dict)
         return predictions
+
+
+class MLPClassifier(object):
+
+    def __init__(self, config, inputs_node, mask, block, attr_type, graph, session ,scope):
+        self.config = config
+        self.mask = mask
+        self.block = block
+        self.attr_type = attr_type
+        self.graph = graph
+        self.session = session
+        self.scope = scope
+        self.graph_nodes = {}
+        self.graph_nodes['inputs'] = inputs_node
+        self.init = None
+
+        self._build_graph()
+
+        self.historical_params = []
+        self.historical_valid_error = []
+
+    def init_variables(self):
+        if self.init is None:
+            var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=self.scope)
+            self.init = tf.variables_initializer(var_list=var_list)
+        self.session.run(self.init)
+
+    def _build_graph(self):
+        nodes = self.graph_nodes
+        with tf.variable_scope(self.scope):
+
+            masked_inputs = nodes['inputs'] * self.mask
+
+            num_hidden_units = self.config['num_hidden_units']
+            nonlinearity = self.config['hidden_layer_nonlinearity']
+            l2_scale = self.config['l2_scale']
+            kernel_regularizer = tf.contrib.layers.l2_regularizer(scale=l2_scale)
+            kernel_initializer = tf.contrib.layers.xavier_initializer()
+            learning_rate = self.config['adam_learning_rate']
+            block = self.block
+            attr_type = self.attr_type
+
+            hidden_units = masked_inputs
+            for l in range(self.config['num_hidden_layers']):
+                hidden_units = tf.layers.dense(hidden_units, num_hidden_units, nonlinearity,
+                                 kernel_initializer=kernel_initializer,
+                                 kernel_regularizer=kernel_regularizer)
+
+
+            if self.attr_type=='b':
+                targets = tf.slice(nodes['inputs'], [0, block[0]], [-1, 1])
+                targets = tf.concat([1-targets, targets], axis=1)
+                num_outputs = 2
+            elif self.attr_type=='c':
+                num_outputs = block[1] - block[0]
+                targets = tf.slice(nodes['inputs'], [0, block[0]], [-1, num_outputs])
+            elif self.attr_type=='r':
+                pass
+            else:
+                raise Exception("attr_type not found")
+
+            logits = tf.layers.dense(hidden_units, num_outputs,
+                                         kernel_initializer=kernel_initializer,
+                                         kernel_regularizer=kernel_regularizer)
+
+            nodes['error'] = tf.reduce_mean(
+                    tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=targets))
+            nodes['prediction'] = tf.nn.softmax(logits)
+            nodes['accuracy'] = tf.reduce_mean(tf.cast(
+                    tf.equal(tf.argmax(logits, 1), tf.argmax(targets, 1)),
+                    tf.float64))
+
+            nodes['l2_loss'] = tf.losses.get_regularization_loss(scope=self.scope)
+
+            var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.scope)
+            nodes['optimizer'] = tf.train.AdamOptimizer(learning_rate=learning_rate)\
+                                .minimize(nodes['error']+nodes['l2_loss'], var_list=var_list)
+
+
+
+    def train_epoch(self, train_inputs, batch_size=None):
+        if batch_size is None:
+            batch_size = 100
+        start = 0
+        errors = []
+        accs = []
+        while start < train_inputs.shape[0]:
+            end = min(start+batch_size, train_inputs.shape[0])
+            batch = train_inputs[start:end, :]
+            feed_dict = {self.graph_nodes['inputs']:batch}
+            self.session.run(self.graph_nodes['optimizer'], feed_dict=feed_dict)
+            error_batch, acc_batch = self.session.run([self.graph_nodes['error'], self.graph_nodes['accuracy']], feed_dict=feed_dict)
+            errors.append(error_batch)
+            accs.append(acc_batch)
+            start = end
+        return np.array(errors).mean(), np.array(accs).mean()
+
+    def validate_epoch(self, valid_inputs, batch_size=None):
+        if batch_size is None:
+            batch_size = 100
+        start = 0
+        errors = []
+        accs = []
+        while start < valid_inputs.shape[0]:
+            end = min(start+batch_size, valid_inputs.shape[0])
+            batch = valid_inputs[start:end, :]
+            feed_dict = {self.graph_nodes['inputs']:batch}
+            error_batch, acc_batch = self.session.run([self.graph_nodes['error'], self.graph_nodes['accuracy']], feed_dict=feed_dict)
+            errors.append(error_batch)
+            accs.append(acc_batch)
+            start = end
+        return np.array(errors).mean(), np.array(accs).mean()
+
+
+
+    def _get_all_params(self):
+        with self.graph.as_default():
+            vals = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.scope)
+            return self.session.run(vals)
+
+    def _assign_all_params(self, values):
+        with self.graph.as_default():
+            vals = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.scope)
+            with tf.variable_scope(self.scope):
+                opts = [val.assign(value) for val, value in zip(vals, values)]
+                opt = tf.group(*opts)
+                self.session.run(opt)
+
+    def _monitor(self, valid_err, early_stopping_lookahead):
+        if not len(self.historical_params) < early_stopping_lookahead+1:
+            del self.historical_params[0]
+            del self.historical_valid_error[0]
+        self.historical_params.append(self._get_all_params())
+        self.historical_valid_error.append(valid_err)
+        if len(self.historical_params) == early_stopping_lookahead+1 and np.argmin(self.historical_valid_error)==0:
+            return True
+        return False
+
+
+
+
+    def fit(self, max_num_epoch, train_inputs, valid_inputs, batch_size, valid_freq=5, early_stopping_lookahead=5, quiet=False):
+        err, acc = self.validate_epoch(valid_inputs, batch_size)
+        if not quiet:
+            print "epoch {0} -- valid -- error:{1}, acc:{2}".format(0, err, acc)
+
+        for i in range(max_num_epoch):
+            err, acc = self.train_epoch(train_inputs, batch_size)
+            #print "epoch {0} -- train -- error:{1}, acc:{2}".format(i+1, errors.mean(), accs.mean())
+            if (i+1)%valid_freq==0:
+                if not quiet:
+                    print "epoch {0} -- train -- error:{1}, acc:{2}".format(i+1, err, acc)
+                valid_error, valid_acc = self.validate_epoch(valid_inputs, batch_size)
+                if early_stopping_lookahead is not None:
+                    stop = self._monitor(valid_error, early_stopping_lookahead)
+                    if stop:
+                        self._assign_all_params(self.historical_params[0])
+                        print "Early Stopping at {0}, Valid Err {1}".format(i+1-valid_freq*early_stopping_lookahead, self.historical_valid_error[0])
+                        return self.historical_valid_error[0]
+                if not quiet:
+                    print "epoch {0} -- valid -- error:{1}, acc:{2}".format(i+1, valid_error, valid_acc)
+        return valid_error
+
+    def query(self, query_inputs):
+
+        feed_dict = {self.graph_nodes['inputs']:query_inputs}
+        prediction = self.session.run(self.graph_nodes['prediction'], feed_dict=feed_dict)
+        return prediction
+
+
+class FlexibleDependencyNetwork(DependencyNetwork):
+
+    def __init__(self, inputs_block, attr_types, configs, graph=None, session=None, name="FDN{0}".format(hash(time.time()))):
+        if graph is None:
+            self.graph = tf.Graph()
+        else:
+            self.graph = graph
+        if session is None:
+            self.session = tf.Session(graph=self.graph)
+        else:
+            self.session = session
+        self.name = name
+        self.attr_types = attr_types
+        self.num_attr = len(self.attr_types)
+        self.inputs_block = inputs_block
+        self.num_inputs = self.inputs_block[-1][1]
+
+        self._define_masks()
+
+        self.configs = configs
+        self._build_graph(self.configs)
+
+
+
+    def _build_graph(self, attr_configs):
+        self.models = []
+        with self.graph.as_default():
+            self.inputs = tf.placeholder(tf.float64, [None, self.masks.shape[1]], 'inputs')
+
+            for i in range(self.num_attr):
+                attr_type = self.attr_types[i]
+                block = self.inputs_block[i]
+                scope = "{0}-{1}".format(self.name, i)
+                config = attr_configs[i]
+                mask = self.masks[i]
+
+                model = MLPClassifier(config, self.inputs, mask, block, attr_type, self.graph, self.session ,scope)
+                model.init_variables()
+                self.models.append(model)
+
+    def train(self, train_inputs, valid_inputs, max_num_epoch, batch_size=None, valid_freq=5, early_stopping_lookahead=5, quiet=False):
+
+        errors = []
+        for model in self.models:
+            err = model.fit(max_num_epoch, train_inputs, valid_inputs,
+                        valid_freq=valid_freq, batch_size=batch_size,
+                        early_stopping_lookahead=early_stopping_lookahead, quiet=quiet)
+            errors.append(err)
+        return errors
+
+
+    def query(self, query_inputs):
+        return [model.query(query_inputs) for model in self.models]
+
+
+
+
 
 
 
