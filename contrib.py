@@ -33,31 +33,7 @@ def resample_with_replacement(inputs, targets):
     return new_inputs, new_targets, remain_inputs, remain_targets
 
 
-def K_fold_train_dependency_networks(K, config, num_classes, train_inputs, train_targets, inputs_block, attr_types, max_num_epoch=500, early_stopping_lookahead=5, quiet=False):
-    dns_ens = []
-    sess_ens = []
-    err_ens = []
-    for k in range(K):
-        valid_index = range(k,train_inputs.shape[0],K)
-        t_inputs, t_targets = np.delete(train_inputs, valid_index, axis=0), np.delete(train_targets, valid_index, axis=0)
-        v_inputs, v_targets = train_inputs[valid_index,:], train_targets[valid_index]
-        dns, sess, valid_errors = train_dependency_networks(config, num_classes, t_inputs, t_targets, v_inputs, v_targets, inputs_block, attr_types, max_num_epoch, early_stopping_lookahead, quiet)
-        dns_ens.append(dns)
-        sess_ens.append(sess)
-        err_ens.append(np.mean(valid_errors))
-    return dns_ens, sess_ens, err_ens
 
-def bagging_train_dependency_networks(n_estimators, config, num_classes, train_inputs, train_targets, inputs_block, attr_types, max_num_epoch=500, early_stopping_lookahead=5, quiet=False):
-    dns_ens = []
-    sess_ens = []
-    err_ens = []
-    for n in range(n_estimators):
-        t_inputs, t_targets, v_inputs, v_targets = resample_with_replacement(train_inputs, train_targets)
-        dns, sess, valid_errors = train_dependency_networks(config, num_classes, t_inputs, t_targets, v_inputs, v_targets, inputs_block, attr_types, max_num_epoch, early_stopping_lookahead, quiet)
-        dns_ens.append(dns)
-        sess_ens.append(sess)
-        err_ens.append(np.mean(valid_errors))
-    return dns_ens, sess_ens, err_ens
 
 class QueryFuncEnsemble(object):
 
