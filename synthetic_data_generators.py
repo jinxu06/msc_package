@@ -16,7 +16,7 @@ class PerClassSyntheticDataGenerator(SyntheticDataGenerator):
     def __init__(self, initial_inputs, initial_targets, samplers, num_classes=None):
         super(PerClassSyntheticDataGenerator, self).__init__(initial_inputs, initial_targets)
         if num_classes is None:
-            num_classes = max(initial_targets) + 1
+            num_classes = int(max(initial_targets)) + 1
         assert len(samplers)==num_classes, "number of samplers mismatch the targets"
         self.num_classes = num_classes
 

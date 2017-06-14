@@ -4,6 +4,7 @@ import xgboost as xgb
 from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier as RFClassifier
 from sklearn.neural_network import MLPClassifier
+from sklearn.linear_model import LogisticRegression
 
 class HighPerformanceClassifier(object):
 
@@ -70,6 +71,26 @@ class HighPerformanceClassifier(object):
         return self.best_valid_acc, self.best_valid_acc_std
 
 
+class LogisticRegressionClassifier(HighPerformanceClassifier):
+
+
+    def __init__(self, hyper_params=None):
+
+        self.hyper_params = {}
+        self.hyper_params['C'] = [0.01, 0.1, 1., 10., 100.]
+        super(LogisticRegressionClassifier, self).__init__(hyper_params)
+
+    def fit(self, X, y):
+        self.model.fit(X, y)
+
+    def predict(self, X):
+        return self.model.predict(X)
+
+    def rebuild_model(self):
+
+        C = self.grid_search_params['C'][self.grid_search_pos]
+        self.model = LogisticRegression(C=C)
+
 
 
 class SVMClassifier(HighPerformanceClassifier):
@@ -98,6 +119,7 @@ class RandomForestClassifier(HighPerformanceClassifier):
 
         self.hyper_params = {}
         self.hyper_params['n_estimators'] = [1, 2, 4, 8, 16, 32]
+        self.hyper_params['max_depth'] = [2, 4, 6]
         super(RandomForestClassifier, self).__init__(hyper_params)
 
     def fit(self, X, y):
@@ -109,7 +131,8 @@ class RandomForestClassifier(HighPerformanceClassifier):
     def rebuild_model(self):
 
         n = self.grid_search_params['n_estimators'][self.grid_search_pos]
-        self.model = RFClassifier(n)
+        max_depth = self.grid_search_params['max_depth'][self.grid_search_pos]
+        self.model = RFClassifier(n, max_depth=max_depth)
 
 
 class XGBoostClassifier(HighPerformanceClassifier):
