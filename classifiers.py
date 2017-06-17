@@ -5,6 +5,65 @@ from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier as RFClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.linear_model import LogisticRegression
+from contrib import enumerate_parameters
+
+class SklearnClassifier(object):
+
+    def __init__(self, method, hyper_params, random=False, random_max_run=1):
+        self.hyper_params_choices = enumerate_parameters(hyper_params)
+        if random:
+            num_choices = len(self.hyper_params_choices)
+            assert random_max_run <= num_choices
+            sel = np.random.choice(range(num_choices),
+                                        size=(random_max_run,), replace=False)
+            self.hyper_params_choices = [self.hyper_params_choices[s] for s in sel]
+        self.method = method
+        self.performance_records = []
+
+    def build_model(self, hyper_params):
+        self.model = self.method(**hyper_params)
+
+    def fit(self, X, y, sample_weight=None):
+        self.model.fit(X, y, sample_weight=sample_weight)
+
+    def predict(self, X):
+        return self.model.predict(X)
+
+    def predict_proba(self, X):
+        return self.model.predict_proba(X)
+
+    def experiment(self, train_inputs, train_targets, valid_inputs, valid_targets, verbose=1):
+        best_acc, best_std = 0., 0.
+        best_model = None
+        for hyper_params in self.hyper_params_choices:
+            self.build_model(hyper_params)
+            self.fit(train_inputs, train_targets)
+            pred = self.predict(train_inputs)
+            train_acc = np.sum(pred == train_targets) / float(len(pred))
+            train_std = np.sqrt(np.var(pred==train_targets, ddof=1) / len(pred))
+            pred = self.predict(valid_inputs)
+            valid_acc = np.sum(pred == valid_targets) / float(len(pred))
+            valid_std = np.sqrt(np.var(pred==valid_targets, ddof=1) / len(pred))
+            performance = {"train_acc":train_acc, "train_std":train_std, "valid_acc":valid_acc, "valid_std":valid_std}
+            self.performance_records.append((hyper_params, performance))
+            if valid_acc > best_acc:
+                best_acc, best_std = valid_acc, valid_std
+                best_model = self.model
+            if verbose > 1:
+                s = ""
+                for param in hyper_params:
+                    s += param+"="
+                    s += str(hyper_params[param]) + " "
+                s = type(self).__name__ + "  " + s
+                print s+"--------"
+                print "train acc:{0}({1}), valid acc:{2}({3})".format(train_acc, train_std, valid_acc, valid_std)
+
+        if verbose >= 1:
+            print "\n{0} -- Best Accuracy: {1}({2})\n".format(type(self).__name__, best_acc, best_std)
+        return best_acc, best_std, best_model
+
+
+
 
 class HighPerformanceClassifier(object):
 

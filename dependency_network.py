@@ -4,8 +4,9 @@ from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier as RFClassifier
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.naive_bayes import MultinomialNB
-import itertools
+import xgboost as xgb
 import time
+from contrib import enumerate_parameters
 
 
 
@@ -465,7 +466,7 @@ class FlexibleDependencyNetwork(DependencyNetwork):
 
 class SklearnDependencyNetwork(DependencyNetwork):
 
-    def __init__(self, method, hyper_params, inputs_block, attr_types, name="DN", random_seed=123):
+    def __init__(self, method, hyper_params, inputs_block, attr_types, random=False, random_max_run=1, name="DN"):
         assert 'r' not in attr_types, "real value attributes are not allowd here"
         self.attr_types = attr_types
         self.num_attr = len(self.attr_types)
@@ -481,21 +482,16 @@ class SklearnDependencyNetwork(DependencyNetwork):
             except:
                 pass
 
-        self._list_hyper_params(hyper_params)
+        self.hyper_params_choices = enumerate_parameters(hyper_params)
+        if random:
+            num_choices = len(self.hyper_params_choices)
+            assert random_max_run <= num_choices
+            sel = np.random.choice(range(num_choices),
+                                        size=(random_max_run,), replace=False)
+            self.hyper_params_choices = [self.hyper_params_choices[s] for s in sel]
+
         self._define_masks()
 
-    def _list_hyper_params(self, hyper_params):
-        all_params = []
-        arr = []
-        for param in hyper_params:
-            arr.append(hyper_params[param])
-        for item in itertools.product(*arr):
-            params = {}
-            for i, param in enumerate(hyper_params):
-                params[param] = item[i]
-            all_params.append(params)
-
-        self.hyper_params = all_params
 
 
     def _predict_proba(self, idx, train_inputs):
@@ -566,7 +562,7 @@ class SklearnDependencyNetwork(DependencyNetwork):
         valid_errors = []
         valid_accs = []
         params_choices = []
-        for params in self.hyper_params:
+        for params in self.hyper_params_choices:
             for model in self.models:
                 model.set_params(**params)
             self._train(train_data)
@@ -575,7 +571,7 @@ class SklearnDependencyNetwork(DependencyNetwork):
             valid_accs.append(accs)
 
         for i in np.argmin(valid_errors, axis=0):
-            params_choices.append(self.hyper_params[i])
+            params_choices.append(self.hyper_params_choices[i])
 
         for i, model in enumerate(self.models):
             model.set_params(**params_choices[i])
