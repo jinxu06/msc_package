@@ -136,9 +136,11 @@ class NDependencyNetwork(object):
             targets = train_inputs[:, block[0]:block[1]]
             if attr_type=='c':
                 targets = np.argmax(targets, axis=1)
+                num_classes = block[1]-block[0]
             elif attr_type=='b':
                 targets = targets[:, 0]
-            num_classes = block[1]-block[0]
+                num_classes = 2
+            
             model = SklearnConditionalModel(method, hyper_params, num_classes, random=False)
             p, e = model.search_hyper_params(K, inputs, targets, K_max_run=K_max_run)
             print p, e
