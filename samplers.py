@@ -60,7 +60,12 @@ class BlockGibbsSampler(Sampler):
                 arr.append(s)
             samples[:, block[0]:block[1]] = np.array(arr)
         elif attr_type == 'r':
-            pass
+            arr = []
+            for mu, sigma, alpha in zip(list(cond_prob[0]), list(cond_prob[1]), list(cond_prob[2])):
+                idx = np.argmax(np.random.multinomial(1, pvals=alpha))
+                s = np.random.normal(loc=mu[idx], scale=sigma[idx])
+                arr.append(s)
+            samples[:, block[0]:block[1]] = np.array(arr)[:, None]
         else:
             raise Exception("attr_type not found")
 
