@@ -71,6 +71,220 @@ class ConditionalModel(object):
         self.fit(train_inputs, train_targets, verbose=verbose)
         return best_hyper_params, best_err
 
+class GANDependencyNetwork(object):
+
+    def __init__(self, hyper_params, noise_generator, inputs_dim, prior_dim, inputs_block, attr_types, random=False, name="GDN"):
+        self.hyper_params = hyper_params
+        self.noise_generator = noise_generator
+        self.inputs_dim = inputs_dim
+        self.prior_dim = prior_dim
+        self.inputs_block = inputs_block
+        self.attr_types = attr_types
+        self.name = name
+
+        self.hyper_params_choices = enumerate_parameters(hyper_params)
+        if random:
+            num_choices = len(self.hyper_params_choices)
+            sel = np.random.choice(range(num_choices),
+                                        size=(num_choices,), replace=False)
+            self.hyper_params_choices = [self.hyper_params_choices[s] for s in sel]
+
+        self.set_model(self.hyper_params_choices[0])
+
+    def set_model(self, hyper_params):
+        self.models = []
+        for k, block in enumerate(self.inputs_block):
+            model = GenerativeAdversarialNetwork(self.hyper_params, self.noise_generator, self.inputs_dim, self.prior_dim, block, name="{0}GDN-{1}".format(self.name, k))
+            model.set_model(hyper_params)
+            model.init_variables()
+            self.models.append(model)
+
+    def fit(self, train_inputs, num_epochs=100):
+        for model, block in zip(self.models, self.inputs_block):
+            model.train(train_inputs, num_epochs)
+
+    def run_sampling(self, initial_samples, num_round, one_step=False):
+        sampling_order = np.random.permutation(range(len(self.inputs_block)))
+        samples = initial_samples.copy()
+        for o in sampling_order:
+            model = self.models[o]
+            begin, end = self.inputs_block[o][0], self.inputs_block[o][1]
+            samples[:, begin:end] = model.generate(samples)
+            if one_step:
+                break
+        return samples
+
+class GenerativeAdversarialNetwork(object):
+
+    def __init__(self, hyper_params, noise_generator, inputs_dim, prior_dim, block, name="GAN{0}".format(np.random.randint(1e6)), random=False):
+        self.name = name
+        self.inputs_dim = inputs_dim
+        self.prior_dim = prior_dim
+        self.block = block
+        self.noise_generator = noise_generator
+        self.session = tf.Session()
+
+    def __del__(self):
+        self.session.close()
+
+    def init_variables(self):
+        self.session.run(self.init)
+
+    def train_discriminator_step(self, X):
+        batch_size = X.shape[0]
+        noise = self.noise_generator(size=(batch_size, self.prior_dim))
+        feed_dict = {}
+        feed_dict[self.inputs] = X
+        feed_dict[self.prior_noise] = noise
+        feed_dict[self.targets] = np.concatenate([np.ones((batch_size, 1)), np.zeros((batch_size, 1))], axis=0)
+        self.session.run(self.discriminator_optimizer, feed_dict=feed_dict)
+        return self.session.run(self.error, feed_dict=feed_dict)
+
+    def train_generator_step(self, X):
+        batch_size = X.shape[0]
+        noise = self.noise_generator(size=(batch_size, self.prior_dim))
+        feed_dict = {}
+        feed_dict[self.inputs] = X
+        feed_dict[self.prior_noise] = noise
+        feed_dict[self.targets] = np.concatenate([np.ones((batch_size, 1)), np.zeros((batch_size, 1))], axis=0)
+        self.session.run(self.generator_optimizer, feed_dict=feed_dict)
+        return self.session.run(self.error, feed_dict=feed_dict)
+
+    def train_epoch(self, train_inputs, K, batch_size=100, verbose=1):
+        start = 0
+        dis_errs = []
+        gen_errs = []
+        while start < train_inputs.shape[0]:
+            end = min(start+batch_size, train_inputs.shape[0])
+            batch = train_inputs[start:end, :]
+            for k in range(K):
+                dis_e = self.train_discriminator_step(batch)
+            dis_errs.append(dis_e)
+            gen_e = self.train_generator_step(batch)
+            gen_errs.append(gen_e)
+            start = end
+        if verbose > 0:
+            print "DIS>>", np.array(dis_errs).mean()
+            print "GEN>>", np.array(gen_errs).mean()
+        return np.array(dis_errs).mean(), np.array(gen_errs).mean()
+
+    def train(self, train_inputs, num_epochs, K=5, batch_size=100, verbose=1):
+        for i in range(num_epochs):
+            if verbose > 0:
+                print "epoch {0} ------".format(i)
+            dis_err, gen_err = self.train_epoch(train_inputs, K=K, batch_size=batch_size, verbose=verbose)
+        return dis_err, gen_err
+
+    def generate(self, X, reject=True, same_size=True):
+        batch_size = X.shape[0]
+        arr = []
+        inputs = X.copy()
+        new_samples = []
+        while inputs.shape[0]>0:
+            noise = self.noise_generator(size=(inputs.shape[0], self.prior_dim))
+            feed_dict = {}
+            feed_dict[self.inputs] = inputs
+            feed_dict[self.prior_noise] = noise
+            samples, proba = self.session.run([self.predictions, self.proba], feed_dict=feed_dict)
+            if not reject:
+                new_samples = samples
+                break
+            proba = proba[inputs.shape[0]:, :]
+            new_inputs = []
+            for p, s, inp in zip(proba[:, 0], samples, inputs):
+                if np.random.uniform() < p:
+                    new_samples.append(s)
+                else:
+                    new_inputs.append(inp)
+            inputs = np.array(new_inputs)
+            if not same_size:
+                break
+        samples = np.array(new_samples)
+
+        return samples
+
+    def set_model(self, hyper_params):
+
+        self.inputs = tf.placeholder(tf.float64, [None, self.inputs_dim], 'inputs')
+        self.prior_noise = tf.placeholder(tf.float64, [None, self.prior_dim], 'prior')
+        self.targets = tf.placeholder(tf.float64, [None,  1], 'targets')
+        self.predictions = self._build_generator(hyper_params, self.inputs, self.prior_noise, self.block)
+        self.discriminator_optimizer = self._build_discriminator(hyper_params, self.inputs, self.predictions, self.block, self.targets)
+        self.generator_optimizer = self._build_generator_optimizer(hyper_params, self.error)
+
+        var_list_gen = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=self.name+"-generator")
+        var_list_dis = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=self.name+"-discriminator")
+        var_list = var_list_gen+var_list_dis
+        self.init = tf.variables_initializer(var_list=var_list)
+
+
+    def _build_generator(self, hyper_params, inputs, prior_noise, block):
+        num_hidden_units = hyper_params['num_hidden_units']
+        num_hidden_layers = hyper_params['num_hidden_layers']
+        activation = hyper_params["activation"]
+        l2_scale = hyper_params["l2_scale"]
+        kernel_regularizer = tf.contrib.layers.l2_regularizer(scale=l2_scale)
+        kernel_initializer = tf.contrib.layers.xavier_initializer()
+
+        mask = np.ones((self.inputs_dim,))
+        mask[block[0]:block[1]] = 0
+        comb_inputs = tf.concat([inputs * mask, prior_noise], axis=1)
+        layers = comb_inputs
+
+        with tf.variable_scope(self.name+"-generator"):
+            for l in range(num_hidden_layers):
+                layers = tf.layers.dense(layers, num_hidden_units, activation,
+                                 kernel_initializer=kernel_initializer,
+                                 kernel_regularizer=kernel_regularizer)
+            layers = tf.layers.dense(layers, self.block[1]-self.block[0],
+                                 kernel_initializer=kernel_initializer,
+                                 kernel_regularizer=kernel_regularizer)
+            return layers
+
+
+    def _build_generator_optimizer(self, hyper_params, error):
+        learning_rate = hyper_params['learning_rate']
+
+        with tf.variable_scope(self.name+"-generator"):
+            l2_loss = tf.losses.get_regularization_loss(scope=self.name+"-generator")
+            var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=self.name+"-generator")
+            generator_optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(-error+l2_loss, var_list=var_list)
+            return generator_optimizer
+
+    def _build_discriminator(self, hyper_params, inputs, predictions, block, targets):
+        num_hidden_units = hyper_params['num_hidden_units']
+        num_hidden_layers = hyper_params['num_hidden_layers']
+        activation = hyper_params["activation"]
+        l2_scale = hyper_params["l2_scale"]
+        learning_rate = hyper_params['learning_rate']
+        kernel_regularizer = tf.contrib.layers.l2_regularizer(scale=l2_scale)
+        kernel_initializer = tf.contrib.layers.xavier_initializer()
+
+        mask = np.ones((self.inputs_dim,))
+        mask[block[0]:block[1]] = 0
+        gen_data = inputs*mask + tf.pad(predictions, paddings=[[0, 0], [block[0], self.inputs_dim-block[1]]])
+        ori_data = inputs
+        dis_inputs = tf.concat([ori_data, gen_data], axis=0)
+        layers = dis_inputs
+
+        with tf.variable_scope(self.name+"-discriminator"):
+            for l in range(num_hidden_layers):
+                layers = tf.layers.dense(layers, num_hidden_units, activation,
+                                 kernel_initializer=kernel_initializer,
+                                 kernel_regularizer=kernel_regularizer)
+            layers = tf.layers.dense(layers, 1,
+                                 kernel_initializer=kernel_initializer,
+                                 kernel_regularizer=kernel_regularizer)
+            self.proba = tf.nn.sigmoid(layers)
+            error = tf.nn.sigmoid_cross_entropy_with_logits(labels=targets, logits=layers)
+            self.error = tf.reduce_mean(error)
+            l2_loss = tf.losses.get_regularization_loss(scope=self.name+"-discriminator")
+            var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=self.name+"-discriminator")
+            discriminator_optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(self.error+l2_loss, var_list=var_list)
+            return discriminator_optimizer
+
+
+
 class MixtureDensityNetwork(ConditionalModel):
 
     def __init__(self, base_model, hyper_params, inputs_dim, random=False):
