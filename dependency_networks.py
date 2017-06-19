@@ -138,7 +138,7 @@ class MixtureDensityNetwork(ConditionalModel):
     def evaluate(self, X, y, batch_size=100):
         return self.model.evaluate(X, y, batch_size=batch_size)
 
-    def query_proba(self, X):
+    def query_proba(self, X, temperature=1.):
         pred = self.model.predict(X)
         pred = pred.astype(np.float64)
         if self.base_model == 'Gaussian':
@@ -146,11 +146,13 @@ class MixtureDensityNetwork(ConditionalModel):
             sigmas = np.exp(pred[:, self.n_components:self.n_components*2])
             exponent = np.exp(pred[:, self.n_components*2:] - np.max(pred[:, self.n_components*2:], axis=1)[:, None])
             alphas = exponent / np.sum(exponent, axis=1)[:, None]
+            sigmas /= temperature
             return mus, sigmas, alphas
         elif self.base_model == 'Poisson':
             lambdas = np.exp(pred[:, :self.n_components])
             exponent = np.exp(pred[:, self.n_components:] - np.max(pred[:, self.n_components:], axis=1)[:, None])
             alphas = exponent / np.sum(exponent, axis=1)[:, None]
+            lambdas /= temperature
             return lambdas, alphas
 
 
@@ -182,7 +184,7 @@ class SklearnConditionalModel(ConditionalModel):
             error.append(-np.log(p[t]))
         return np.mean(error)#, np.std(error, ddof=1) / len(error)
 
-    def query_proba(self, X):
+    def query_proba(self, X, temperature=1.):
         min_proba = 1e-8
         proba = self.model.predict_proba(X)
         proba = np.maximum(proba, min_proba)
@@ -195,6 +197,8 @@ class SklearnConditionalModel(ConditionalModel):
             else:
                 predictions[:, c:c+1] = np.ones((X.shape[0],1)) * min_proba
         predictions = predictions.astype(np.float64)
+        predictions /= np.sum(predictions, axis=1)[:, None]
+        predictions = predictions** temperature
         predictions /= np.sum(predictions, axis=1)[:, None]
         return predictions
 
@@ -291,13 +295,6 @@ class NDependencyNetwork(object):
     def query(self, query_inputs, temperature=1.):
         ret = []
         for model, mask, method in zip(self.models, self.masks, self.methods):
-            proba = model.query_proba(query_inputs * mask)
-            if method[1]=='Gaussian':
-                proba[1] /= temperature
-            elif method[1]=='Poisson':
-                proba[0] /= temperature
-            elif str(method[0])==str(SklearnConditionalModel):
-                proba = proba ** temperature
-                proba /= np.sum(proba, axis=1)[:, None]
+            proba = model.query_proba(query_inputs * mask, temperature=temperature)
             ret.append(proba)
         return ret
