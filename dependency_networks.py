@@ -288,9 +288,16 @@ class NDependencyNetwork(object):
             print p, e
             self.models.append(model)
 
-    def query(self, query_inputs):
+    def query(self, query_inputs, temperature=1.):
         ret = []
-        for model, mask in zip(self.models, self.masks):
+        for model, mask, method in zip(self.models, self.masks, self.methods):
             proba = model.query_proba(query_inputs * mask)
+            if method[1]=='Gaussian':
+                proba[1] /= temperature
+            elif method[1]=='Poisson':
+                proba[0] /= temperature
+            elif str(method[0])==str(SklearnConditionalModel):
+                proba = proba ** temperature
+                proba /= np.sum(proba, axis=1)[:, None]
             ret.append(proba)
         return ret
