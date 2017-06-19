@@ -103,14 +103,16 @@ class GANDependencyNetwork(object):
         for model, block in zip(self.models, self.inputs_block):
             model.train(train_inputs, num_epochs)
 
-    def run_sampling(self, initial_samples, num_round, one_step=False):
+    def run_sampling(self, initial_samples, num_round, max_step=None, reject=True, same_size=True):
         sampling_order = np.random.permutation(range(len(self.inputs_block)))
         samples = initial_samples.copy()
+        step = 0
         for o in sampling_order:
             model = self.models[o]
             begin, end = self.inputs_block[o][0], self.inputs_block[o][1]
-            samples[:, begin:end] = model.generate(samples)
-            if one_step:
+            samples[:, begin:end] = model.generate(samples, reject, same_size)
+            step += 1
+            if max_step is not None and step>=max_step:
                 break
         return samples
 
