@@ -261,7 +261,7 @@ class GenerativeAdversarialNetwork(object):
 
     def _build_discriminator(self, hyper_params, inputs, predictions, block, targets):
         num_hidden_units = 50 #hyper_params['num_hidden_units']
-        num_hidden_layers = 2 #hyper_params['num_hidden_layers']
+        num_hidden_layers = 1 #hyper_params['num_hidden_layers']
         activation = hyper_params["activation"]
         l2_scale = hyper_params["l2_scale"]
         learning_rate = hyper_params['learning_rate']
@@ -277,6 +277,7 @@ class GenerativeAdversarialNetwork(object):
         layers = dis_inputs
 
         with tf.variable_scope(self.name+"-discriminator"):
+            layers = tf.layers.dropout(layers, rate=dropout_rate, training=self.is_training)
             for l in range(num_hidden_layers):
                 layers = tf.layers.dense(layers, num_hidden_units, activation,
                                  kernel_initializer=kernel_initializer,
