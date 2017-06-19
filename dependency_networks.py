@@ -174,7 +174,7 @@ class SklearnConditionalModel(ConditionalModel):
             hyper_params['num_class'] = self.num_classes
         self.model = self.method(**hyper_params)
 
-    def fit(self, X, y):
+    def fit(self, X, y, verbose=1.):
         self.model.fit(X, y)
 
     def evaluate(self, X, y):
