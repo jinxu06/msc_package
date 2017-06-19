@@ -155,6 +155,8 @@ class GenerativeAdversarialNetwork(object):
         return self.session.run(self.error, feed_dict=feed_dict)
 
     def train_epoch(self, train_inputs, K, batch_size=100, verbose=1):
+        train_inputs = train_inputs.copy()
+        np.random.shuffle(train_inputs)
         start = 0
         dis_errs = []
         gen_errs = []
@@ -172,7 +174,7 @@ class GenerativeAdversarialNetwork(object):
             print "GEN>>", np.array(gen_errs).mean()
         return np.array(dis_errs).mean(), np.array(gen_errs).mean()
 
-    def train(self, train_inputs, num_epochs, K=5, batch_size=100, verbose=1):
+    def train(self, train_inputs, num_epochs, K=1, batch_size=100, verbose=1):
         for i in range(num_epochs):
             if verbose > 0:
                 print "epoch {0} ------".format(i)
