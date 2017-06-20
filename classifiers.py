@@ -32,12 +32,12 @@ class SklearnClassifier(object):
     def predict_proba(self, X):
         return self.model.predict_proba(X)
 
-    def experiment(self, train_inputs, train_targets, valid_inputs, valid_targets, verbose=1):
+    def experiment(self, train_inputs, train_targets, valid_inputs, valid_targets, sample_weight=None, verbose=1):
         best_acc, best_std = 0., 0.
         best_model = None
         for hyper_params in self.hyper_params_choices:
             self.build_model(hyper_params)
-            self.fit(train_inputs, train_targets)
+            self.fit(train_inputs, train_targets, sample_weight=sample_weight)
             pred = self.predict(train_inputs)
             train_acc = np.sum(pred == train_targets) / float(len(pred))
             train_std = np.sqrt(np.var(pred==train_targets, ddof=1) / len(pred))
