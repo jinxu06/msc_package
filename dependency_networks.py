@@ -168,8 +168,8 @@ class GenerativeAdversarialNetwork(object):
         self.session.run(self.generator_optimizer, feed_dict=feed_dict)
         return self.session.run(self.error, feed_dict=feed_dict)
 
-    def discriminate(self, train_inputs):
-        gen_col = self.generate(train_inputs, reject=False)
+    def discriminate(self, train_inputs, reject=True):
+        gen_col = self.generate(train_inputs, reject=reject)
         gen_inputs = train_inputs.copy()
         gen_inputs[:, self.block[0]:self.block[1]] = gen_col
         hyper_params = {
@@ -177,7 +177,7 @@ class GenerativeAdversarialNetwork(object):
             "n_estimators": [4, 8, 16, 32, 64]
         }
         cls = SklearnClassifier(xgb.XGBClassifier, hyper_params)
-        D = SyntheticDataDiscriminator(cls)
+        D = SyntheticDataDiscriminator(cls, sampling_size=min(gen_inputs.shape[0], train_inputs.shape[0]))
         D.feed_data(train_inputs, np.zeros((train_inputs.shape[0],)), gen_inputs, np.zeros((gen_inputs.shape[0],)))
         return D.discriminate()[0]
 
