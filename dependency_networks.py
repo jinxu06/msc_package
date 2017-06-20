@@ -91,6 +91,10 @@ class GANDependencyNetwork(object):
 
         self.set_model(self.hyper_params_choices[0])
 
+    def set_dis_l2_scale(self, value, ratio=None):
+        for model in self.models:
+            model.set_dis_l2_scale(value, ratio)
+
     def set_model(self, hyper_params):
         self.models = []
         for k, block in enumerate(self.inputs_block):
