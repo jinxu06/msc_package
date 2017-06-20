@@ -229,7 +229,11 @@ class GenerativeAdversarialNetwork(object):
             dis_err, gen_err = self.train_epoch(train_inputs, K=K, batch_size=batch_size, verbose=verbose)
 
             if (i+1) % evaluate_freq == 0:
-                acc = self.discriminate(train_inputs, reject=True)
+                T = 3
+                acc = 0.
+                for t in range(T):
+                    acc += self.discriminate(train_inputs, reject=True)
+                acc /= T
                 if acc < self.best_eval:
                     self.best_eval = acc
                     self.best_params = self._get_all_params()
