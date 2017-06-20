@@ -116,7 +116,9 @@ class GANDependencyNetwork(object):
         for o in sampling_order:
             model = self.models[o]
             begin, end = self.inputs_block[o][0], self.inputs_block[o][1]
-            samples[:, begin:end] = model.generate(samples, reject, same_size)
+            gen_col, perturbed_inputs = model.generate(samples, reject, same_size)
+            samples = perturbed_inputs
+            samples[:, begin:end] = gen_col
             step += 1
             if max_step is not None and step>=max_step:
                 break
@@ -169,8 +171,8 @@ class GenerativeAdversarialNetwork(object):
         return self.session.run(self.error, feed_dict=feed_dict)
 
     def discriminate(self, train_inputs, reject=True):
-        gen_col = self.generate(train_inputs, reject=reject)
-        gen_inputs = train_inputs.copy()
+        gen_col, perturbed_inputs = self.generate(train_inputs, reject=reject, same_size=False)
+        gen_inputs = perturbed_inputs.copy()
         gen_inputs[:, self.block[0]:self.block[1]] = gen_col
         hyper_params = {
             "max_depth": [4],
@@ -212,6 +214,7 @@ class GenerativeAdversarialNetwork(object):
         batch_size = X.shape[0]
         arr = []
         inputs = X.copy()
+        perturbed_inputs = []
         new_samples = []
         while inputs.shape[0]>0:
             noise = self.noise_generator(size=(inputs.shape[0], self.prior_dim))
@@ -223,20 +226,23 @@ class GenerativeAdversarialNetwork(object):
             samples, proba = self.session.run([self.predictions, self.proba], feed_dict=feed_dict)
             if not reject:
                 new_samples = samples
+                perturbed_inputs = X.copy()
                 break
             proba = proba[inputs.shape[0]:, :]
             new_inputs = []
             for p, s, inp in zip(proba[:, 0], samples, inputs):
                 if np.random.uniform() < p:
                     new_samples.append(s)
+                    perturbed_inputs.append(inp)
                 else:
                     new_inputs.append(inp)
             inputs = np.array(new_inputs)
             if not same_size:
                 break
         samples = np.array(new_samples)
+        perturbed_inputs = np.array(perturbed_inputs)
 
-        return samples
+        return samples, perturbed_inputs
 
     def set_model(self, hyper_params):
 
