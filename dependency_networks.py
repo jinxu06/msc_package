@@ -233,7 +233,7 @@ class GenerativeAdversarialNetwork(object):
                 if acc < self.best_eval:
                     self.best_eval = acc
                     self.best_params = self._get_all_params()
-        print "Best Eval: "self.best_eval
+        print "Best Eval: ", self.best_eval
         self._assign_all_params(*self.best_params)
         return self.best_eval
 
