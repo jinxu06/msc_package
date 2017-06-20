@@ -132,6 +132,12 @@ class GenerativeAdversarialNetwork(object):
     def init_variables(self):
         self.session.run(self.init)
 
+    def set_dis_l2_scale(self, value, ratio=None):
+        if ratio is not None:
+            self.cur_dis_l2_scale *= ratio
+        else:
+            self.cur_dis_l2_scale = value
+
     def train_discriminator_step(self, X):
         batch_size = X.shape[0]
         noise = self.noise_generator(size=(batch_size, self.prior_dim))
@@ -140,6 +146,7 @@ class GenerativeAdversarialNetwork(object):
         feed_dict[self.prior_noise] = noise
         feed_dict[self.targets] = np.concatenate([np.ones((batch_size, 1)), np.zeros((batch_size, 1))], axis=0)
         feed_dict[self.is_training] = True
+        feed_dict[self.dis_l2_scale] = self.cur_dis_l2_scale
         self.session.run(self.discriminator_optimizer, feed_dict=feed_dict)
         return self.session.run(self.error, feed_dict=feed_dict)
 
@@ -151,6 +158,7 @@ class GenerativeAdversarialNetwork(object):
         feed_dict[self.prior_noise] = noise
         feed_dict[self.targets] = np.concatenate([np.ones((batch_size, 1)), np.zeros((batch_size, 1))], axis=0)
         feed_dict[self.is_training] = False
+        feed_dict[self.dis_l2_scale] = self.cur_dis_l2_scale
         self.session.run(self.generator_optimizer, feed_dict=feed_dict)
         return self.session.run(self.error, feed_dict=feed_dict)
 
@@ -192,6 +200,7 @@ class GenerativeAdversarialNetwork(object):
             feed_dict[self.inputs] = inputs
             feed_dict[self.prior_noise] = noise
             feed_dict[self.is_training] = False
+            feed_dict[self.dis_l2_scale] = self.cur_dis_l2_scale
             samples, proba = self.session.run([self.predictions, self.proba], feed_dict=feed_dict)
             if not reject:
                 new_samples = samples
@@ -212,10 +221,12 @@ class GenerativeAdversarialNetwork(object):
 
     def set_model(self, hyper_params):
 
+        self.cur_dis_l2_scale = hyper_params['dis_l2_scale']
         self.inputs = tf.placeholder(tf.float64, [None, self.inputs_dim], 'inputs')
         self.prior_noise = tf.placeholder(tf.float64, [None, self.prior_dim], 'prior')
         self.targets = tf.placeholder(tf.float64, [None,  1], 'targets')
         self.is_training = tf.placeholder(tf.bool, (), "is_training")
+        self.dis_l2_scale = tf.placeholder(tf.float64, (), "dis_l2_scale")
         self.predictions = self._build_generator(hyper_params, self.inputs, self.prior_noise, self.block)
         self.discriminator_optimizer = self._build_discriminator(hyper_params, self.inputs, self.predictions, self.block, self.targets)
         self.generator_optimizer = self._build_generator_optimizer(hyper_params, self.error)
@@ -260,13 +271,12 @@ class GenerativeAdversarialNetwork(object):
             return generator_optimizer
 
     def _build_discriminator(self, hyper_params, inputs, predictions, block, targets):
-        num_hidden_units = 50 #hyper_params['num_hidden_units']
-        num_hidden_layers = 1 #hyper_params['num_hidden_layers']
+        num_hidden_units = hyper_params['dis_num_hidden_units']
+        num_hidden_layers = hyper_params['dis_num_hidden_layers']
         activation = hyper_params["activation"]
-        l2_scale = hyper_params["l2_scale"]
         learning_rate = hyper_params['learning_rate']
         dropout_rate = hyper_params['dropout_rate']
-        kernel_regularizer = tf.contrib.layers.l2_regularizer(scale=l2_scale)
+        kernel_regularizer = tf.contrib.layers.l2_regularizer(scale=self.dis_l2_scale)
         kernel_initializer = tf.contrib.layers.xavier_initializer()
 
         mask = np.ones((self.inputs_dim,))
