@@ -132,6 +132,8 @@ class GenerativeAdversarialNetwork(object):
         self.prior_dim = prior_dim
         self.block = block
         self.noise_generator = noise_generator
+        self.best_eval = 1.
+        self.best_params = None
         self.session = tf.Session()
 
     def __del__(self):
@@ -145,6 +147,23 @@ class GenerativeAdversarialNetwork(object):
             self.cur_dis_l2_scale *= ratio
         else:
             self.cur_dis_l2_scale = value
+
+    def _get_all_params(self):
+        gen_vals = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.name+"-generator")
+        dis_vals = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.name+"-discriminator")
+        return self.session.run([gen_vals, dis_vals])
+
+    def _assign_all_params(self, gen_values, dis_values):
+        gen_vals = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.name+"-generator")
+        dis_vals = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.name+"-discriminator")
+        with tf.variable_scope(self.name+"-generator"):
+            opts = [val.assign(value) for val, value in zip(gen_vals, gen_values)]
+            opt = tf.group(*opts)
+            self.session.run(opt)
+        with tf.variable_scope(self.name+"-discriminator"):
+            opts = [val.assign(value) for val, value in zip(dis_vals, dis_values)]
+            opt = tf.group(*opts)
+            self.session.run(opt)
 
     def train_discriminator_step(self, X):
         batch_size = X.shape[0]
@@ -203,12 +222,20 @@ class GenerativeAdversarialNetwork(object):
             print "GEN>>", np.array(gen_errs).mean()
         return np.array(dis_errs).mean(), np.array(gen_errs).mean()
 
-    def train(self, train_inputs, num_epochs, K=1, batch_size=100, verbose=1):
+    def train(self, train_inputs, num_epochs, K=1, evaluate_freq=10, batch_size=100, verbose=1):
         for i in range(num_epochs):
             if verbose > 0:
                 print "epoch {0} ------".format(i)
             dis_err, gen_err = self.train_epoch(train_inputs, K=K, batch_size=batch_size, verbose=verbose)
-        return dis_err, gen_err
+
+            if (i+1) % evaluate_freq == 0:
+                acc = self.discriminate(train_inputs, reject=True)
+                if acc < self.best_eval:
+                    self.best_eval = acc
+                    self.best_params = self._get_all_params()
+        print "Best Eval: "self.best_eval
+        self._assign_all_params(*self.best_params)
+        return self.best_eval
 
     def generate(self, X, reject=True, same_size=True):
         batch_size = X.shape[0]
