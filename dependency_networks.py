@@ -7,6 +7,8 @@ from sklearn.naive_bayes import MultinomialNB
 import xgboost as xgb
 import time
 from contrib import enumerate_parameters
+from classifiers import SklearnClassifier
+from synthetic_data_discriminators import SyntheticDataDiscriminator
 
 from keras import backend as K
 from keras.models import Sequential
@@ -165,6 +167,19 @@ class GenerativeAdversarialNetwork(object):
         feed_dict[self.dis_l2_scale] = self.cur_dis_l2_scale
         self.session.run(self.generator_optimizer, feed_dict=feed_dict)
         return self.session.run(self.error, feed_dict=feed_dict)
+
+    def discriminate(self, train_inputs):
+        gen_col = self.generate(train_inputs, reject=False)
+        gen_inputs = train_inputs.copy()
+        gen_inputs[:, self.block[0]:self.block[1]] = gen_col
+        hyper_params = {
+            "max_depth": [4],
+            "n_estimators": [4, 8, 16, 32, 64]
+        }
+        cls = SklearnClassifier(xgb.XGBClassifier, hyper_params)
+        D = SyntheticDataDiscriminator(cls)
+        D.feed_data(train_inputs, np.zeros((train_inputs.shape[0],)), gen_inputs, np.zeros((gen_inputs.shape[0],)))
+        return D.discriminate()[0]
 
     def train_epoch(self, train_inputs, K, batch_size=100, verbose=1):
         train_inputs = train_inputs.copy()
