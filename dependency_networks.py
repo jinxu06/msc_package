@@ -581,8 +581,9 @@ class NDependencyNetwork(object):
                 model = MixtureDensityNetwork(method[1], hyper_params, train_inputs.shape[-1], random=True)
             else:
                 raise Exception("model not found")
+            cur = time.time()
             p, e = model.search_hyper_params(K, inputs, targets, K_max_run=K_max_run, random_max_run=random_max_run, verbose=verbose)
-            print p, e
+            print p, e, time.time()-cur
             self.models.append(model)
 
     def query(self, query_inputs, temperature=1.):
