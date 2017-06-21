@@ -366,7 +366,7 @@ class GenerativeAdversarialNetwork(object):
 
 class MixtureDensityNetwork(ConditionalModel):
 
-    def __init__(self, base_model, hyper_params, inputs_dim, random=False):
+    def __init__(self, base_model, hyper_params, inputs_dim, random=True):
         self.inputs_dim = inputs_dim
         self.base_model = base_model
         self.hyper_params_choices = enumerate_parameters(hyper_params)
