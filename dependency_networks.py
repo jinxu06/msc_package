@@ -134,6 +134,8 @@ class GenerativeAdversarialNetwork(object):
         self.noise_generator = noise_generator
         self.best_eval = 1.
         self.best_params = None
+        self.mask = np.ones((self.inputs_dim,))
+        self.mask[block[0]:block[1]] = 0
         self.session = tf.Session()
 
     def __del__(self):
@@ -171,6 +173,7 @@ class GenerativeAdversarialNetwork(object):
         feed_dict = {}
         feed_dict[self.inputs] = X
         feed_dict[self.prior_noise] = noise
+        feed_dict[self.masks] = np.broadcast_to(self.mask, shape=X.shape)
         feed_dict[self.targets] = np.concatenate([np.ones((batch_size, 1)), np.zeros((batch_size, 1))], axis=0)
         feed_dict[self.is_training] = True
         feed_dict[self.dis_l2_scale] = self.cur_dis_l2_scale
@@ -183,6 +186,7 @@ class GenerativeAdversarialNetwork(object):
         feed_dict = {}
         feed_dict[self.inputs] = X
         feed_dict[self.prior_noise] = noise
+        feed_dict[self.masks] = np.broadcast_to(self.mask, shape=X.shape)
         feed_dict[self.targets] = np.concatenate([np.ones((batch_size, 1)), np.zeros((batch_size, 1))], axis=0)
         feed_dict[self.is_training] = False
         feed_dict[self.dis_l2_scale] = self.cur_dis_l2_scale
@@ -254,6 +258,7 @@ class GenerativeAdversarialNetwork(object):
             feed_dict = {}
             feed_dict[self.inputs] = inputs
             feed_dict[self.prior_noise] = noise
+            feed_dict[self.masks] = np.broadcast_to(self.mask, shape=X.shape)
             feed_dict[self.is_training] = False
             feed_dict[self.dis_l2_scale] = self.cur_dis_l2_scale
             samples, proba = self.session.run([self.predictions, self.proba], feed_dict=feed_dict)
@@ -283,6 +288,7 @@ class GenerativeAdversarialNetwork(object):
         self.inputs = tf.placeholder(tf.float64, [None, self.inputs_dim], 'inputs')
         self.prior_noise = tf.placeholder(tf.float64, [None, self.prior_dim], 'prior')
         self.targets = tf.placeholder(tf.float64, [None,  1], 'targets')
+        self.masks = tf.placeholder(tf.float64, [None, self.inputs_dim], 'masks')
         self.is_training = tf.placeholder(tf.bool, (), "is_training")
         self.dis_l2_scale = tf.placeholder(tf.float64, (), "dis_l2_scale")
         self.predictions = self._build_generator(hyper_params, self.inputs, self.prior_noise, self.block)
@@ -303,9 +309,7 @@ class GenerativeAdversarialNetwork(object):
         kernel_regularizer = tf.contrib.layers.l2_regularizer(scale=l2_scale)
         kernel_initializer = tf.contrib.layers.xavier_initializer()
 
-        mask = np.ones((self.inputs_dim,))
-        mask[block[0]:block[1]] = 0
-        comb_inputs = tf.concat([inputs * mask, prior_noise], axis=1)
+        comb_inputs = tf.concat([inputs * self.mask, prior_noise], axis=1)
         layers = comb_inputs
 
         with tf.variable_scope(self.name+"-generator"):
@@ -337,10 +341,10 @@ class GenerativeAdversarialNetwork(object):
         kernel_regularizer = tf.contrib.layers.l2_regularizer(scale=self.dis_l2_scale)
         kernel_initializer = tf.contrib.layers.xavier_initializer()
 
-        mask = np.ones((self.inputs_dim,))
-        mask[block[0]:block[1]] = 0
-        gen_data = inputs*mask + tf.pad(predictions, paddings=[[0, 0], [block[0], self.inputs_dim-block[1]]])
+        gen_data = inputs*self.mask + tf.pad(predictions, paddings=[[0, 0], [block[0], self.inputs_dim-block[1]]])
+        gen_data = np.concat([gen_data, 1-self.masks], axis=1)
         ori_data = inputs
+        ori_data = np.concat([ori_data, 1-self.masks], axis=1)
         dis_inputs = tf.concat([ori_data, gen_data], axis=0)
         layers = dis_inputs
 
