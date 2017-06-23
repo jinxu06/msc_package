@@ -258,7 +258,7 @@ class GenerativeAdversarialNetwork(object):
             feed_dict = {}
             feed_dict[self.inputs] = inputs
             feed_dict[self.prior_noise] = noise
-            feed_dict[self.masks] = np.broadcast_to(self.mask, shape=X.shape)
+            feed_dict[self.masks] = np.broadcast_to(self.mask, shape=inputs.shape)
             feed_dict[self.is_training] = False
             feed_dict[self.dis_l2_scale] = self.cur_dis_l2_scale
             samples, proba = self.session.run([self.predictions, self.proba], feed_dict=feed_dict)
