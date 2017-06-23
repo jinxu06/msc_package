@@ -342,9 +342,9 @@ class GenerativeAdversarialNetwork(object):
         kernel_initializer = tf.contrib.layers.xavier_initializer()
 
         gen_data = inputs*self.mask + tf.pad(predictions, paddings=[[0, 0], [block[0], self.inputs_dim-block[1]]])
-        gen_data = np.concat([gen_data, 1-self.masks], axis=1)
+        gen_data = tf.concat([gen_data, 1-self.masks], axis=1)
         ori_data = inputs
-        ori_data = np.concat([ori_data, 1-self.masks], axis=1)
+        ori_data = tf.concat([ori_data, 1-self.masks], axis=1)
         dis_inputs = tf.concat([ori_data, gen_data], axis=0)
         layers = dis_inputs
 
