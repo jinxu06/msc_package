@@ -19,21 +19,32 @@ class PerClassSyntheticDataGenerator(SyntheticDataGenerator):
             num_classes = int(max(initial_targets)) + 1
         assert len(samplers)==num_classes, "number of samplers mismatch the targets"
         self.num_classes = num_classes
+        self.initial_inputs = initial_inputs
+        self.initial_targets = initial_targets
 
         self.samplers = samplers
         for c in range(self.num_classes):
             self.samplers[c].reset_initial_samples(initial_inputs[initial_targets==c])
 
-    def generate(self, num_round, include_initial_data=True):
+    def reset(self, initial_inputs, initial_targets):
+        for c in range(self.num_classes):
+            self.samplers[c].reset_initial_samples(initial_inputs[initial_targets==c])
+
+    def generate(self, num_round, include_initial_data=True, shuffle=True, reset=False):
+        if reset:
+            self.reset(self.initial_inputs, self.initial_targets)
         all_samples = []
         if include_initial_data:
             all_samples.append(np.array(np.concatenate([self.initial_inputs, self.initial_targets[:,None]], axis=1)))
         for c in range(self.num_classes):
-            samples = self.samplers[c].run_sampling(num_round)
+            samples = self.samplers[c].run_sampling(num_round, mix_and_shuffle=False)
+            samples = np.reshape(samples,
+                    (np.size(samples)/samples.shape[-1], samples.shape[-1]))
             samples = np.concatenate([samples, np.ones((samples.shape[0],1), dtype=np.int32)*c], axis=1)
             all_samples.append(samples)
         all_samples = np.concatenate(all_samples, axis=0)
-        np.random.shuffle(all_samples)
+        if shuffle:
+            np.random.shuffle(all_samples)
         return all_samples[:, :-1], all_samples[:, -1]
 
 class TargetsAsInputsSyntheticDataGenerator(SyntheticDataGenerator):

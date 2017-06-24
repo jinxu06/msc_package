@@ -126,7 +126,10 @@ class GenerativeAdversarialNetwork(object):
         batch_size = X.shape[0]
         feed_dict = {}
         feed_dict[self.inputs] = X
-        noise = self.noise_generator(size=(batch_size, self.prior_dim))
+        #noise = self.noise_generator(size=(batch_size, self.prior_dim))
+        self.noise_generator.reset(X, y)
+        noise, _ = self.noise_generator.generate(1, shuffle=False, include_original_data=False)
+        noise = noise[:, self.block[0]:self.block[1]]
         feed_dict[self.prior_noise] = noise
         feed_dict[self.targets] = one_hot_encoding(y, self.num_classes)
         feed_dict[self.masks] = np.broadcast_to(self.mask, shape=X.shape)
@@ -148,7 +151,10 @@ class GenerativeAdversarialNetwork(object):
         batch_size = X.shape[0]
         feed_dict = {}
         feed_dict[self.inputs] = X
-        noise = self.noise_generator(size=(batch_size, self.prior_dim))
+        #noise = self.noise_generator(size=(batch_size, self.prior_dim))
+        self.noise_generator.reset(X, y)
+        noise, _ = self.noise_generator.generate(1, shuffle=False, include_original_data=False)
+        noise = noise[:, self.block[0]:self.block[1]]
         feed_dict[self.prior_noise] = noise
         feed_dict[self.targets] = one_hot_encoding(y, self.num_classes)
         feed_dict[self.masks] = np.broadcast_to(self.mask, shape=X.shape)
@@ -222,7 +228,10 @@ class GenerativeAdversarialNetwork(object):
     def generate(self, X, y, reject=True, same_size=True):
         inputs = X.copy()
         targets = one_hot_encoding(y, self.num_classes)
-        noise = self.noise_generator(size=(inputs.shape[0], self.prior_dim))
+        #noise = self.noise_generator(size=(inputs.shape[0], self.prior_dim))
+        self.noise_generator.reset(X, y)
+        noise, _ = self.noise_generator.generate(1, shuffle=False, include_original_data=False)
+        noise = noise[:, self.block[0]:self.block[1]]
         feed_dict = {}
         feed_dict[self.inputs] = inputs
         feed_dict[self.targets] = targets
@@ -307,6 +316,7 @@ class GenerativeAdversarialNetwork(object):
         kernel_regularizer = tf.contrib.layers.l2_regularizer(scale=l2_scale)
         kernel_initializer = tf.contrib.layers.xavier_initializer()
 
+        #layer = tf.concat([inputs, targets, prior_noise], axis=1)
         layer = tf.concat([inputs, targets, prior_noise], axis=1)
 
 
@@ -317,9 +327,11 @@ class GenerativeAdversarialNetwork(object):
                                  kernel_initializer=kernel_initializer,
                                  kernel_regularizer=kernel_regularizer)
                 #layer = tf.layers.batch_normalization(layer, training=self.is_training)
-            layer = tf.layers.dense(layer, self.block[1]-self.block[0],
+            layer = tf.layers.dense(layer, num_hidden_units*self.num_classes,
                                  kernel_initializer=kernel_initializer,
                                  kernel_regularizer=kernel_regularizer)
+            sel = tf.reshape(tf.transpose(tf.stack([targets for i in range(self.num_hidden_units)])), shape=-1)
+            layer = tf.reduce_sum(layer * sel, axis=1, keep_dims=True)
 
         gen_inputs = inputs*self.mask + tf.pad(layer, paddings=[[0, 0], [self.block[0], self.inputs_dim-self.block[1]]])
         return gen_inputs
