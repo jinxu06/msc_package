@@ -324,7 +324,7 @@ class GenerativeAdversarialNetwork(object):
             layer = tf.layers.dense(layer, self.num_classes,
                                  kernel_initializer=kernel_initializer,
                                  kernel_regularizer=kernel_regularizer)
-            layer = tf.reduce_sum(layer * targets, axis=1， keep_dims=True)
+            layer = tf.reduce_sum(layer * targets, axis=1, keep_dims=True)
         gen_inputs = inputs*self.mask + tf.pad(layer, paddings=[[0, 0], [self.block[0], self.inputs_dim-self.block[1]]])
         return gen_inputs
 
