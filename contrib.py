@@ -73,3 +73,15 @@ def enumerate_parameters(params_choices, key_order=None):
             dic[keys[i]] = params[i]
         all_choices.append(dic)
     return all_choices
+
+
+
+def one_hot_encoding(y, num_classes=None):
+    if y.ndim==1:
+        y = y[:, None]
+    if num_classes is None:
+        num_classes = int(np.max(y))+1
+    t = np.zeros((y.shape[0], num_classes))
+    for i in range(num_classes):
+        t[:, i:i+1] = (y==i).astype(np.int64)
+    return t
