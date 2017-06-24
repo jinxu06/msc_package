@@ -127,9 +127,7 @@ class GenerativeAdversarialNetwork(object):
         feed_dict = {}
         feed_dict[self.inputs] = X
         #noise = self.noise_generator(size=(batch_size, self.prior_dim))
-        self.noise_generator.reset(X, y)
-        noise, _ = self.noise_generator.generate(1, shuffle=False, include_original_data=False)
-        noise = noise[:, self.block[0]:self.block[1]]
+        noise = self.noise_generator.generate(X, y, self.block)
         feed_dict[self.prior_noise] = noise
         feed_dict[self.targets] = one_hot_encoding(y, self.num_classes)
         feed_dict[self.masks] = np.broadcast_to(self.mask, shape=X.shape)
@@ -152,9 +150,7 @@ class GenerativeAdversarialNetwork(object):
         feed_dict = {}
         feed_dict[self.inputs] = X
         #noise = self.noise_generator(size=(batch_size, self.prior_dim))
-        self.noise_generator.reset(X, y)
-        noise, _ = self.noise_generator.generate(1, shuffle=False, include_original_data=False)
-        noise = noise[:, self.block[0]:self.block[1]]
+        noise = self.noise_generator.generate(X, y, self.block)
         feed_dict[self.prior_noise] = noise
         feed_dict[self.targets] = one_hot_encoding(y, self.num_classes)
         feed_dict[self.masks] = np.broadcast_to(self.mask, shape=X.shape)
@@ -229,9 +225,7 @@ class GenerativeAdversarialNetwork(object):
         inputs = X.copy()
         targets = one_hot_encoding(y, self.num_classes)
         #noise = self.noise_generator(size=(inputs.shape[0], self.prior_dim))
-        self.noise_generator.reset(X, y)
-        noise, _ = self.noise_generator.generate(1, shuffle=False, include_original_data=False)
-        noise = noise[:, self.block[0]:self.block[1]]
+        noise = self.noise_generator.generate(X, y, self.block)
         feed_dict = {}
         feed_dict[self.inputs] = inputs
         feed_dict[self.targets] = targets

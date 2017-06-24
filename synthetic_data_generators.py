@@ -30,21 +30,18 @@ class PerClassSyntheticDataGenerator(SyntheticDataGenerator):
         for c in range(self.num_classes):
             self.samplers[c].reset_initial_samples(initial_inputs[initial_targets==c])
 
-    def generate(self, num_round, include_initial_data=True, shuffle=True, reset=False):
-        if reset:
-            self.reset(self.initial_inputs, self.initial_targets)
+    def generate(self, num_round, include_initial_data=True):
         all_samples = []
         if include_initial_data:
             all_samples.append(np.array(np.concatenate([self.initial_inputs, self.initial_targets[:,None]], axis=1)))
         for c in range(self.num_classes):
-            samples = self.samplers[c].run_sampling(num_round, mix_and_shuffle=False)
+            samples = self.samplers[c].run_sampling(num_round)
             samples = np.reshape(samples,
                     (np.size(samples)/samples.shape[-1], samples.shape[-1]))
             samples = np.concatenate([samples, np.ones((samples.shape[0],1), dtype=np.int32)*c], axis=1)
             all_samples.append(samples)
         all_samples = np.concatenate(all_samples, axis=0)
-        if shuffle:
-            np.random.shuffle(all_samples)
+        np.random.shuffle(all_samples)
         return all_samples[:, :-1], all_samples[:, -1]
 
 class TargetsAsInputsSyntheticDataGenerator(SyntheticDataGenerator):
