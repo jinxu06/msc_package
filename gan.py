@@ -321,12 +321,10 @@ class GenerativeAdversarialNetwork(object):
                                  kernel_initializer=kernel_initializer,
                                  kernel_regularizer=kernel_regularizer)
                 #layer = tf.layers.batch_normalization(layer, training=self.is_training)
-            layer = tf.layers.dense(layer, num_hidden_units*self.num_classes,
+            layer = tf.layers.dense(layer, self.num_classes,
                                  kernel_initializer=kernel_initializer,
                                  kernel_regularizer=kernel_regularizer)
-            sel = tf.reshape(tf.transpose(tf.stack([targets for i in range(self.num_hidden_units)])), shape=-1)
-            layer = tf.reduce_sum(layer * sel, axis=1, keep_dims=True)
-
+            layer = tf.reduce_sum(layer * targets, axis=1)
         gen_inputs = inputs*self.mask + tf.pad(layer, paddings=[[0, 0], [self.block[0], self.inputs_dim-self.block[1]]])
         return gen_inputs
 
