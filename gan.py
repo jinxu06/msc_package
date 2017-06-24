@@ -270,6 +270,22 @@ class GenerativeAdversarialNetwork(object):
 
         return samples, perturbed_inputs
         """
+    def pre_training(self, X, y):
+        batch_size = X.shape[0]
+        feed_dict = {}
+        feed_dict[self.inputs] = X
+        #noise = self.noise_generator(size=(batch_size, self.prior_dim))
+        noise = self.noise_generator.generate(X, y, self.block)
+        feed_dict[self.prior_noise] = noise
+        feed_dict[self.targets] = one_hot_encoding(y, self.num_classes)
+        feed_dict[self.masks] = np.broadcast_to(self.mask, shape=X.shape)
+        feed_dict[self.is_training] = True
+        feed_dict[self.dis_l2_scale] = self.cur_dis_l2_scale
+        feed_dict[self.is_gen] = 1.
+        #feed_dict[self.source_targets] = np.zeros((batch_size, 1))
+        feed_dict[self.source_targets] = np.ones((batch_size, 1)) # min log(1-D) has vanishing gradients, use max logD
+        self.session.run(self.pretraining_optimizer, feed_dict=feed_dict)
+        return self.session.run([self.source_error, self.classification_error], feed_dict=feed_dict)
 
     def set_model(self, hyper_params):
 
@@ -292,11 +308,12 @@ class GenerativeAdversarialNetwork(object):
         self.discriminator_optimizer, self.source_proba, self.source_error, self.classification_error = self._build_discriminator(hyper_params, inputs, self.source_targets, self.targets)
         self.generator_optimizer = self._build_generator_optimizer(hyper_params, self.source_error, self.classification_error)
 
+
+
         var_list_gen = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=self.name+"-generator")
         var_list_dis = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=self.name+"-discriminator")
         var_list = var_list_gen+var_list_dis
         self.init = tf.variables_initializer(var_list=var_list)
-
 
 
     def _build_generator(self, hyper_params, inputs, targets, prior_noise):
@@ -325,6 +342,7 @@ class GenerativeAdversarialNetwork(object):
                                  kernel_initializer=kernel_initializer,
                                  kernel_regularizer=kernel_regularizer)
             layer = tf.reduce_sum(layer * targets, axis=1, keep_dims=True)
+            self.cond = layer
         gen_inputs = inputs*self.mask + tf.pad(layer, paddings=[[0, 0], [self.block[0], self.inputs_dim-self.block[1]]])
         return gen_inputs
 
@@ -376,6 +394,10 @@ class GenerativeAdversarialNetwork(object):
         with tf.variable_scope(self.name+"-generator"):
             l2_loss = tf.losses.get_regularization_loss(scope=self.name+"-generator")
             var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=self.name+"-generator")
+
+            error = tf.nn.l2_loss(self.cond-self.noise)
+            self.pretraining_optimizer = tf.train.AdamOptimizer().minimize(error)
+
             generator_optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(source_error+l2_loss, var_list=var_list)
             return generator_optimizer
 
