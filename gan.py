@@ -278,14 +278,14 @@ class GenerativeAdversarialNetwork(object):
         noise = np.random.uniform(size=(batch_size, self.prior_dim))
         feed_dict[self.prior_noise] = noise
         feed_dict[self.targets] = one_hot_encoding(y, self.num_classes)
-        #feed_dict[self.masks] = np.broadcast_to(self.mask, shape=X.shape)
+        feed_dict[self.masks] = np.broadcast_to(self.mask, shape=X.shape)
         #feed_dict[self.is_training] = True
         feed_dict[self.dis_l2_scale] = self.cur_dis_l2_scale
         feed_dict[self.is_gen] = 1.
         #feed_dict[self.source_targets] = np.zeros((batch_size, 1))
         feed_dict[self.source_targets] = np.ones((batch_size, 1)) # min log(1-D) has vanishing gradients, use max logD
         self.session.run(self.pretraining_optimizer, feed_dict=feed_dict)
-        return self.session.run([self.source_error, self.classification_error], feed_dict=feed_dict)
+        return self.session.run(self.pretraining_error, feed_dict=feed_dict)
 
     def set_model(self, hyper_params):
 
@@ -395,8 +395,8 @@ class GenerativeAdversarialNetwork(object):
             l2_loss = tf.losses.get_regularization_loss(scope=self.name+"-generator")
             var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=self.name+"-generator")
 
-            error = tf.nn.l2_loss(self.cond-self.prior_noise)
-            self.pretraining_optimizer = tf.train.AdamOptimizer().minimize(error+l2_loss, var_list = var_list)
+            self.pretraining_error = tf.reduce_mean((self.cond-self.prior_noise)**2)
+            self.pretraining_optimizer = tf.train.AdamOptimizer().minimize(self.pretraining_error, var_list = var_list)
 
             generator_optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(source_error+l2_loss, var_list=var_list)
             return generator_optimizer
