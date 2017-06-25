@@ -72,11 +72,12 @@ class BlockGibbsSampler(Sampler):
         return samples
 
     def draw_samples_for_one_round(self):
-        cond_probs = self.cond_func(self.cur_samples)
+        #cond_probs = self.cond_func(self.cur_samples)
         all_samples = []
-        for o in self.sampling_order:
+        for i, o in enumerate(self.sampling_order):
             block = self.inputs_block[o]
             attr_type = self.attr_types[o]
+            cond_probs = self.cond_func(self.cur_samples)
             cond_prob = cond_probs[o]
             self.cur_samples = self.draw_samples_for_one_step(self.cur_samples, cond_prob, block, attr_type)
             all_samples.append(self.cur_samples.copy())
