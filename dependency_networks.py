@@ -372,11 +372,11 @@ class GenerativeAdversarialNetwork(object):
 
 class MixtureDensityNetwork(ConditionalModel):
 
-    def __init__(self, base_model, hyper_params, inputs_dim, random=True):
+    def __init__(self, base_model, hyper_params, inputs_dim, random=True, name=None):
         self.inputs_dim = inputs_dim
         self.base_model = base_model
         self.hyper_params_choices = enumerate_parameters(hyper_params)
-        self.name = None
+        self.name = name
         if random:
             num_choices = len(self.hyper_params_choices)
             sel = np.random.choice(range(num_choices),
@@ -598,7 +598,7 @@ class NDependencyNetwork(object):
             if str(method[0])==str(SklearnConditionalModel):
                 model = SklearnConditionalModel(method[1], hyper_params, num_classes, random=True)
             elif str(method[0])==str(MixtureDensityNetwork):
-                model = MixtureDensityNetwork(method[1], hyper_params, train_inputs.shape[-1], random=True)
+                model = MixtureDensityNetwork(method[1], hyper_params, train_inputs.shape[-1], random=True, name=self.name+str(block[0]))
             else:
                 raise Exception("model not found")
             cur = time.time()
@@ -612,7 +612,7 @@ class NDependencyNetwork(object):
     def restore_models(self):
         for model in self.models:
             model.load_model()
-            
+
     def delete_models(self):
         for model in self.models:
             model.delete_model()
