@@ -6,6 +6,7 @@ from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.naive_bayes import MultinomialNB
 import xgboost as xgb
 import time
+import os
 from contrib import enumerate_parameters
 from classifiers import SklearnClassifier
 from synthetic_data_discriminators import SyntheticDataDiscriminator
@@ -17,6 +18,7 @@ from keras import regularizers
 from keras import initializers
 
 from keras.callbacks import EarlyStopping
+from keras.models import load_model
 
 
 def log_sum_exp(x, axis=None):
@@ -374,6 +376,7 @@ class MixtureDensityNetwork(ConditionalModel):
         self.inputs_dim = inputs_dim
         self.base_model = base_model
         self.hyper_params_choices = enumerate_parameters(hyper_params)
+        self.name = None
         if random:
             num_choices = len(self.hyper_params_choices)
             sel = np.random.choice(range(num_choices),
@@ -451,6 +454,17 @@ class MixtureDensityNetwork(ConditionalModel):
             alphas = exponent / np.sum(exponent, axis=1)[:, None]
             lambdas /= temperature
             return lambdas, alphas
+
+    def save_model(self):
+        if self.name is None:
+            self.name = "MDN{0}".format(hash(self.model))
+        self.model.save("../models/{0}.h5".format(self.name))
+
+    def load_model(self):
+        self.model = load_model("../models/{0}.h5".format(self.name))
+
+    def delete_model(self):
+        os.remove("../models/{0}.h5".format(self.name))
 
 
 class SklearnConditionalModel(ConditionalModel):
@@ -564,7 +578,7 @@ class NDependencyNetwork(object):
     #    for m, p in zip(methods, hyper_params):
     #        self.models.append(m(**p))
 
-    def train(self, train_inputs, K=10, K_max_run=None, random_max_run=None, verbose=1):
+    def train(self, train_inputs, K=10, K_max_run=None, random_max_run=None, verbose=1, save=False):
         self.models = []
         for mask, block, attr_type, method, hyper_params in zip(self.masks, self.inputs_block, self.attr_types,
                         self.methods, self.hyper_params_choices):
@@ -587,8 +601,15 @@ class NDependencyNetwork(object):
                 raise Exception("model not found")
             cur = time.time()
             p, e = model.search_hyper_params(K, inputs, targets, K_max_run=K_max_run, random_max_run=random_max_run, verbose=verbose)
+            if save:
+                model.save_model()
+                K.clear_session()
             print p, e, time.time()-cur
             self.models.append(model)
+
+    def recove_models(self):
+        for model in self.models:
+            model.load_model()
 
     def query(self, query_inputs, temperature=1.):
         ret = []
