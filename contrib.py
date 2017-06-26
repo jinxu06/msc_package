@@ -2,6 +2,7 @@ import numpy as np
 import tensorflow as tf
 import time
 import itertools
+import os
 
 
 
@@ -85,3 +86,8 @@ def one_hot_encoding(y, num_classes=None):
     for i in range(num_classes):
         t[:, i:i+1] = (y==i).astype(np.int64)
     return t
+
+def clear_all_models():
+    _, _, filenames = os.walk("../models").next()
+    for filename in filenames:
+        os.remove("../models/{0}".format(filename))

@@ -404,10 +404,12 @@ class MixtureDensityNetwork(ConditionalModel):
             self.model.add(Dense(self.n_components*3, kernel_initializer=kernel_initializer,
                             kernel_regularizer=kernel_regularizer, input_shape=(hyper_params['num_hidden_units'],)))
             self.model.compile(loss=self._mdn_gaussian_loss, optimizer='adam')
+            self.loss_func = "_mdn_gaussian_loss"
         elif self.base_model=='Poisson':
             self.model.add(Dense(self.n_components*2, kernel_initializer=kernel_initializer,
                                 kernel_regularizer=kernel_regularizer, input_shape=(hyper_params['num_hidden_units'],)))
             self.model.compile(loss=self._mdn_poisson_loss, optimizer='adam')
+            self.loss_func = "_mdn_poisson_loss"
 
 
 
@@ -461,7 +463,7 @@ class MixtureDensityNetwork(ConditionalModel):
         self.model.save("../models/{0}.h5".format(self.name))
 
     def load_model(self):
-        self.model = load_model("../models/{0}.h5".format(self.name))
+        self.model = load_model("../models/{0}.h5".format(self.name), custom_objects={self.loss_func: self.model.loss})
 
     def delete_model(self):
         os.remove("../models/{0}.h5".format(self.name))
@@ -607,9 +609,13 @@ class NDependencyNetwork(object):
             print p, e, time.time()-cur
             self.models.append(model)
 
-    def recove_models(self):
+    def restore_models(self):
         for model in self.models:
             model.load_model()
+            
+    def delete_models(self):
+        for model in self.models:
+            model.delete_model()
 
     def query(self, query_inputs, temperature=1.):
         ret = []
