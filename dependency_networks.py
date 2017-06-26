@@ -11,7 +11,7 @@ from contrib import enumerate_parameters
 from classifiers import SklearnClassifier
 from synthetic_data_discriminators import SyntheticDataDiscriminator
 
-from keras import backend as K
+from keras import backend as Kb
 from keras.models import Sequential
 from keras.layers import Dense, Activation
 from keras import regularizers
@@ -23,8 +23,8 @@ from keras.models import load_model
 
 def log_sum_exp(x, axis=None):
     """Log-sum-exp trick implementation"""
-    x_max = K.max(x, axis=axis, keepdims=True)
-    return K.log(K.sum(K.exp(x - x_max),
+    x_max = Kb.max(x, axis=axis, keepdims=True)
+    return Kb.log(Kb.sum(Kb.exp(x - x_max),
                        axis=axis, keepdims=True))+x_max
 
 
@@ -413,22 +413,22 @@ class MixtureDensityNetwork(ConditionalModel):
 
     def _mdn_gaussian_loss(self, y_true, y_pred):
         self.mus = y_pred[:, :self.n_components]
-        self.sigmas = K.exp(y_pred[:, self.n_components:self.n_components*2])
-        self.alphas = K.softmax(y_pred[:, self.n_components*2:])
+        self.sigmas = exp(y_pred[:, self.n_components:self.n_components*2])
+        self.alphas = Kb.softmax(y_pred[:, self.n_components*2:])
 
-        exponent = K.log(self.alphas) + tf.contrib.distributions.Normal(loc=self.mus, scale=self.sigmas).log_prob(y_true)
+        exponent = Kb.log(self.alphas) + tf.contrib.distributions.Normal(loc=self.mus, scale=self.sigmas).log_prob(y_true)
         #Z = (2 * np.pi * (self.sigmas**2))**0.5
         #normal = lambda x: tf.exp(-0.5 * (x - self.mus)**2 / (self.sigmas**2)) / Z
         res = log_sum_exp(exponent, axis=1)
-        res = - K.mean(res)
+        res = - Kb.mean(res)
         return res
 
     def _mdn_poisson_loss(self, y_true, y_pred):
-        self.lambdas = K.exp(y_pred[:, :self.n_components])
-        self.alphas = K.softmax(y_pred[:, self.n_components:])
-        exponent = K.log(self.alphas) + tf.contrib.distributions.Poisson(rate=self.lambdas).log_prob(y_true)
+        self.lambdas = Kb.exp(y_pred[:, :self.n_components])
+        self.alphas = Kb.softmax(y_pred[:, self.n_components:])
+        exponent = Kb.log(self.alphas) + tf.contrib.distributions.Poisson(rate=self.lambdas).log_prob(y_true)
         res = log_sum_exp(exponent, axis=1)
-        res = - K.mean(res)
+        res = - Kb.mean(res)
         return res
 
     def fit(self, X, y, max_num_epochs=500, validation_split=0.2, batch_size=100, verbose=1):
@@ -603,7 +603,7 @@ class NDependencyNetwork(object):
             p, e = model.search_hyper_params(K, inputs, targets, K_max_run=K_max_run, random_max_run=random_max_run, verbose=verbose)
             if save:
                 model.save_model()
-                K.clear_session()
+                Kb.clear_session()
             print p, e, time.time()-cur
             self.models.append(model)
 
