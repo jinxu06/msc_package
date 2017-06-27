@@ -375,8 +375,13 @@ class MixtureDensityNetwork(ConditionalModel):
     def __init__(self, base_model, hyper_params, inputs_dim, random=True, name=None):
         self.inputs_dim = inputs_dim
         self.base_model = base_model
+        if self.base_model == "Gaussian":
+            self.loss_func = "_mdn_gaussian_loss"
+        elif self.base_model == "Poisson":
+            self.loss_func = "_mdn_poisson_loss"
         self.hyper_params_choices = enumerate_parameters(hyper_params)
         self.name = name
+        self.n_components = None
         if random:
             num_choices = len(self.hyper_params_choices)
             sel = np.random.choice(range(num_choices),
@@ -404,18 +409,20 @@ class MixtureDensityNetwork(ConditionalModel):
             self.model.add(Dense(self.n_components*3, kernel_initializer=kernel_initializer,
                             kernel_regularizer=kernel_regularizer, input_shape=(hyper_params['num_hidden_units'],)))
             self.model.compile(loss=self._mdn_gaussian_loss, optimizer='adam')
-            self.loss_func = "_mdn_gaussian_loss"
+            
         elif self.base_model=='Poisson':
             self.model.add(Dense(self.n_components*2, kernel_initializer=kernel_initializer,
                                 kernel_regularizer=kernel_regularizer, input_shape=(hyper_params['num_hidden_units'],)))
             self.model.compile(loss=self._mdn_poisson_loss, optimizer='adam')
-            self.loss_func = "_mdn_poisson_loss"
+            
 
 
 
     def _mdn_gaussian_loss(self, y_true, y_pred):
+        if self.n_components is None:
+            self.n_components = y_pred.shape[1]/3
         self.mus = y_pred[:, :self.n_components]
-        self.sigmas = exp(y_pred[:, self.n_components:self.n_components*2])
+        self.sigmas = Kb.exp(y_pred[:, self.n_components:self.n_components*2])
         self.alphas = Kb.softmax(y_pred[:, self.n_components*2:])
 
         exponent = Kb.log(self.alphas) + tf.contrib.distributions.Normal(loc=self.mus, scale=self.sigmas).log_prob(y_true)
@@ -426,6 +433,8 @@ class MixtureDensityNetwork(ConditionalModel):
         return res
 
     def _mdn_poisson_loss(self, y_true, y_pred):
+        if self.n_components is None:
+            self.n_components = y_pred.shape[1]/2
         self.lambdas = Kb.exp(y_pred[:, :self.n_components])
         self.alphas = Kb.softmax(y_pred[:, self.n_components:])
         exponent = Kb.log(self.alphas) + tf.contrib.distributions.Poisson(rate=self.lambdas).log_prob(y_true)
@@ -463,7 +472,7 @@ class MixtureDensityNetwork(ConditionalModel):
         self.model.save("../models/{0}.h5".format(self.name))
 
     def load_model(self):
-        self.model = load_model("../models/{0}.h5".format(self.name), custom_objects={self.loss_func: self.model.loss})
+        self.model = load_model("../models/{0}.h5".format(self.name), custom_objects={self.loss_func: eval("self.{0}".format(self.loss_func))})
 
     def delete_model(self):
         os.remove("../models/{0}.h5".format(self.name))
