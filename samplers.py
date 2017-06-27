@@ -30,6 +30,59 @@ class Sampler(object):
             np.random.shuffle(all_samples)
         return all_samples
 
+class RandomSampler(Sampler):
+
+    def __init__(self, initial_samples, inputs_block, attr_types,
+                                        cond_func):
+        assert len(inputs_block)==len(attr_types), \
+                        "lengths of inputs_block and attr_types don't agree"
+        self.cond_func = cond_func
+        if initial_samples is not None:
+            arr = []
+            for i in range(initial_samples.shape[0]):
+                arr.append(np.random.permutation(initial_samples.shape[1]))
+            self.sampling_order = np.array(arr)
+        super(RandomSampler, self).__init__(initial_samples,
+                                                inputs_block, attr_types)
+
+    def reset_initial_samples(self, initial_samples=None):
+        if initial_samples is not None:
+            self.initial_samples = initial_samples
+            arr = []
+            for i in range(initial_samples.shape[0]):
+                arr.append(np.random.permutation(initial_samples.shape[1]))
+            self.sampling_order = np.array(arr)
+        self.cur_samples = self.initial_samples.copy()
+
+
+    def draw_samples_for_one_step(self, last_step_samples, step):
+        samples = last_step_samples.copy()
+        cond_probs = self.cond_func(samples)
+        for i, (o, sample) in enumerate(zip(self.sampling_order, samples)):
+            o = o[step]
+            attr_type = self.attr_types[o]
+            block = self.inputs_block[o]
+            if attr_type == 'r':
+                mu, sigma, alpha = cond_probs[o][0][i], cond_probs[o][1][i], cond_probs[o][2][i]
+                idx = np.argmax(np.random.multinomial(1, pvals=alpha))
+                s = np.random.normal(loc=mu[idx], scale=sigma[idx])
+                sample[block[0]:block[1]] = s
+            elif attr_type == 'i':
+                lam, alpha = cond_probs[o][0][i], cond_probs[o][1][i]
+                idx = np.argmax(np.random.multinomial(1, pvals=alpha))
+                s = np.random.poisson(lam=lam[idx])
+                sample[block[0]:block[1]] = s
+            else:
+                raise Exception("attr_type not found")
+        return samples
+
+
+    def draw_samples_for_one_round(self):
+        for step in range(len(self.inputs_block)):
+            self.cur_samples = self.draw_samples_for_one_step(self.cur_samples, step)
+        return self.cur_samples
+
+
 class BlockGibbsSampler(Sampler):
 
     def __init__(self, initial_samples, inputs_block, attr_types,
