@@ -722,6 +722,10 @@ class NDependencyNetwork(object):
         self.models = []
         for mask, block, attr_type, method, hyper_params in zip(self.masks, self.inputs_block, self.attr_types,
                         self.methods, self.hyper_params_choices):
+            if attr_type=='c':
+                num_classes = block[1]-block[0]
+            elif attr_type=='b':
+                num_classes = 2
 
             if str(method[0])==str(SklearnConditionalModel):
                 model = SklearnConditionalModel(method[1], hyper_params, num_classes, random=True, name=self.name+str(block[0]))
