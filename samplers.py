@@ -120,7 +120,7 @@ class BlockGibbsSampler(Sampler):
                 arr.append(s)
             samples[:, block[0]:block[1]] = np.array(arr)[:, None]
         elif attr_type == 'i':
-            attr = []
+            arr = []
             for lam, alpha in zip(list(cond_prob[0]), list(cond_prob[1])):
                 idx = np.argmax(np.random.multinomial(1, pvals=alpha))
                 s = np.random.poisson(lam=lam[idx])

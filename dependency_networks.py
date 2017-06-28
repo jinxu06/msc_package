@@ -6,6 +6,7 @@ from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.naive_bayes import MultinomialNB
 import xgboost as xgb
 import time
+import cPickle as pkl
 import os
 from contrib import enumerate_parameters
 from classifiers import SklearnClassifier
@@ -19,6 +20,8 @@ from keras import initializers
 
 from keras.callbacks import EarlyStopping
 from keras.models import load_model
+from scipy.stats import poisson
+from contrib import resample_with_replacement
 
 
 def log_sum_exp(x, axis=None):
@@ -370,6 +373,87 @@ class GenerativeAdversarialNetwork(object):
 
 
 
+
+class PoissonConditionalModel(ConditionalModel):
+
+    def __init__(self, hyper_params, random=True, name=None):
+        self.name = name
+        self.hyper_params_choices = enumerate_parameters(hyper_params)
+        if random:
+            num_choices = len(self.hyper_params_choices)
+            sel = np.random.choice(range(num_choices),
+                                        size=(num_choices,), replace=False)
+            self.hyper_params_choices = [self.hyper_params_choices[s] for s in sel]
+
+    def set_model(self, hyper_params):
+        self.params = hyper_params
+
+    def fit(self, X, y, verbose=1):
+        dtrain = xgb.DMatrix(X, label=y)
+        self.model = xgb.train(self.params, dtrain)
+
+    def evaluate(self, X, y):
+        preds = self.model.predict(xgb.DMatrix(X))
+        arr = []
+        for lam, t in zip(preds, y):
+            p = poisson(lam)
+            arr.append(-np.log(p.pmf(t)))
+        return np.mean(arr)
+
+    def query_proba(self, X, temperature=1.):
+        preds = self.model.predict(xgb.DMatrix(X))
+        return preds[:, None], np.ones((preds.shape[0],1))
+
+class BaggingPoissonConditionalModel(ConditionalModel):
+
+    def __init__(self, hyper_params, random=True, name=None):
+        self.name = name
+        self.hyper_params_choices = enumerate_parameters(hyper_params)
+        if random:
+            num_choices = len(self.hyper_params_choices)
+            sel = np.random.choice(range(num_choices),
+                                        size=(num_choices,), replace=False)
+            self.hyper_params_choices = [self.hyper_params_choices[s] for s in sel]
+
+    def set_model(self, hyper_params):
+        self.params = hyper_params
+
+    def fit(self, X, y, verbose=1):
+        self.n_bagging = self.params["n_bagging"]
+        self.models = []
+        for i in range(self.n_bagging):
+            t_inputs, t_targets, v_inputs, v_targets = resample_with_replacement(X, y)
+            dtrain = xgb.DMatrix(t_inputs, label=t_targets)
+            model = xgb.train(self.params, dtrain)
+            self.models.append(model)
+
+    def evaluate(self, X, y):
+        all_preds = []
+        for model in self.models:
+            preds = model.predict(xgb.DMatrix(X))
+            all_preds.append(preds)
+        all_preds = np.array(all_preds).T
+        arr = []
+        for lams, t in zip(all_preds, y):
+            ps = []
+            for lam in lams:
+                p = poisson(lam).pmf(t)
+                ps.append(p)
+            prob = np.mean(ps)
+            arr.append(-np.log(prob))
+        return np.mean(arr)
+
+    def query_proba(self, X, temperature=1.):
+        all_preds = []
+        for model in self.models:
+            preds = model.predict(xgb.DMatrix(X))
+            all_preds.append(preds)
+        all_preds = np.array(all_preds).T
+        alphas = np.ones(all_preds.shape, dtype=np.float64) / all_preds.shape[1]
+        return all_preds, alphas
+
+
+
 class MixtureDensityNetwork(ConditionalModel):
 
     def __init__(self, base_model, hyper_params, inputs_dim, random=True, name=None):
@@ -409,12 +493,12 @@ class MixtureDensityNetwork(ConditionalModel):
             self.model.add(Dense(self.n_components*3, kernel_initializer=kernel_initializer,
                             kernel_regularizer=kernel_regularizer, input_shape=(hyper_params['num_hidden_units'],)))
             self.model.compile(loss=self._mdn_gaussian_loss, optimizer='adam')
-            
+
         elif self.base_model=='Poisson':
             self.model.add(Dense(self.n_components*2, kernel_initializer=kernel_initializer,
                                 kernel_regularizer=kernel_regularizer, input_shape=(hyper_params['num_hidden_units'],)))
             self.model.compile(loss=self._mdn_poisson_loss, optimizer='adam')
-            
+
 
 
 
@@ -480,10 +564,10 @@ class MixtureDensityNetwork(ConditionalModel):
 
 class SklearnConditionalModel(ConditionalModel):
 
-    def __init__(self, method, hyper_params, num_classes, random=False):
+    def __init__(self, method, hyper_params, num_classes, random=False, name=None):
         self.method = method
         self.num_classes = num_classes
-
+        self.name = name
         self.hyper_params_choices = enumerate_parameters(hyper_params)
         if random:
             num_choices = len(self.hyper_params_choices)
@@ -523,6 +607,18 @@ class SklearnConditionalModel(ConditionalModel):
         predictions = predictions** temperature
         predictions /= np.sum(predictions, axis=1)[:, None]
         return predictions
+
+    def save_model(self):
+        with open("../models/{0}.pkl".format(self.name), 'w') as f:
+            pkl.dump(self.model, f)
+
+
+    def load_model(self):
+        with open("../models/{0}.pkl".format(self.name), 'r') as f:
+            self.model = pkl.load(f)
+
+    def delete_model(self):
+        os.remove("../models/{0}.pkl".format(self.name))
 
     """
     def train_K_fold(self, K, X, y, K_max_run=None):
@@ -605,9 +701,13 @@ class NDependencyNetwork(object):
                 targets = targets[:, 0]
 
             if str(method[0])==str(SklearnConditionalModel):
-                model = SklearnConditionalModel(method[1], hyper_params, num_classes, random=True)
+                model = SklearnConditionalModel(method[1], hyper_params, num_classes, random=True, self.name+str(block[0]))
             elif str(method[0])==str(MixtureDensityNetwork):
                 model = MixtureDensityNetwork(method[1], hyper_params, train_inputs.shape[-1], random=True, name=self.name+str(block[0]))
+            elif str(method[0])==str(PoissonConditionalModel):
+                model = PoissonConditionalModel(hyper_params)
+            elif str(method[0])==str(BaggingPoissonConditionalModel):
+                model = BaggingPoissonConditionalModel(hyper_params)
             else:
                 raise Exception("model not found")
             cur = time.time()
