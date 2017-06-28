@@ -701,7 +701,7 @@ class NDependencyNetwork(object):
                 targets = targets[:, 0]
 
             if str(method[0])==str(SklearnConditionalModel):
-                model = SklearnConditionalModel(method[1], hyper_params, num_classes, random=True, self.name+str(block[0]))
+                model = SklearnConditionalModel(method[1], hyper_params, num_classes, random=True, name=self.name+str(block[0]))
             elif str(method[0])==str(MixtureDensityNetwork):
                 model = MixtureDensityNetwork(method[1], hyper_params, train_inputs.shape[-1], random=True, name=self.name+str(block[0]))
             elif str(method[0])==str(PoissonConditionalModel):
