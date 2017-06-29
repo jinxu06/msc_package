@@ -502,7 +502,7 @@ class MixtureDensityNetwork(ConditionalModel):
             self.model.compile(loss=self._mdn_poisson_loss, optimizer='adam')
 
         elif self.base_model=='NegativeBinomial':
-            self.model.add(Dense(self.n_components*4, kernel_initializer=kernel_initializer,
+            self.model.add(Dense(self.n_components*3, kernel_initializer=kernel_initializer,
                                 kernel_regularizer=kernel_regularizer, input_shape=(hyper_params['num_hidden_units'],)))
             self.model.compile(loss=self._mdn_negative_binomial_loss, optimizer='adam')
 
