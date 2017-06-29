@@ -128,9 +128,10 @@ class BlockGibbsSampler(Sampler):
             samples[:, block[0]:block[1]] = np.array(arr)[:, None]
         elif attr_type == 'ib':
             arr = []
-            for count, prob, alpha in zip(list(cond_prob[0]), list(cond_prob[1]), list(cond_prob[2])):
+            for offset, count, prob, alpha in zip(list(cond_prob[0]), list(cond_prob[1]), list(cond_prob[2]), list(cond_prob[3])):
                 idx = np.argmax(np.random.multinomial(1, pvals=alpha))
                 s = np.random.negative_binomial(n=count[idx], p=prob[idx])
+                s += offset[idx]
                 arr.append(s)
             samples[:, block[0]:block[1]] = np.array(arr)[:, None]
         else:
