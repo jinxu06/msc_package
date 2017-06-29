@@ -499,6 +499,11 @@ class MixtureDensityNetwork(ConditionalModel):
                                 kernel_regularizer=kernel_regularizer, input_shape=(hyper_params['num_hidden_units'],)))
             self.model.compile(loss=self._mdn_poisson_loss, optimizer='adam')
 
+        elif self.base_model=='NegativeBinomial':
+            self.model.add(Dense(self.n_components*3, kernel_initializer=kernel_initializer,
+                                kernel_regularizer=kernel_regularizer, input_shape=(hyper_params['num_hidden_units'],)))
+            self.model.compile(loss=self._mdn_negative_binomial_loss, optimizer='adam')
+
 
 
 
@@ -526,6 +531,18 @@ class MixtureDensityNetwork(ConditionalModel):
         res = - Kb.mean(res)
         return res
 
+    def _mdn_negative_binomial_loss(self, y_true, y_pred):
+        if self.n_components is None:
+            self.n_components = y_pred.shape[1]/3
+        self.total_counts = Kb.exp(y_pred[:, :self.n_components])
+        self.probs = Kb.sigmoid(y_pred[:, self.n_components:2*self.n_components])
+        self.alphas = Kb.softmax(y_pred[:, 2*self.n_components:])
+
+        exponent = Kb.log(self.alphas) + tf.contrib.distributions.NegativeBinomial(total_count=self.total_counts, probs=self.probs).log_prob(y_true)
+        res = log_sum_exp(exponent, axis=1)
+        res = - Kb.mean(res)
+        return res
+
     def fit(self, X, y, max_num_epochs=500, validation_split=0.2, batch_size=100, verbose=1):
         early_stopping = EarlyStopping(monitor='val_loss', patience=2)
         self.model.fit(X, y, validation_split=validation_split, callbacks=[early_stopping], epochs=max_num_epochs,  batch_size=batch_size, verbose=verbose)
@@ -549,6 +566,13 @@ class MixtureDensityNetwork(ConditionalModel):
             alphas = exponent / np.sum(exponent, axis=1)[:, None]
             lambdas /= temperature
             return lambdas, alphas
+        elif self.base_model == 'NegativeBinomial':
+            total_counts = np.exp(pred[:, :self.n_components])
+            probs = 1. / (1. + np.exp(-pred[:, self.n_components:2*self.n_components]))
+            exponent = np.exp(pred[:, 2*self.n_components:] - np.max(pred[:, 2*self.n_components:], axis=1)[:, None])
+            alphas = exponent / np.sum(exponent, axis=1)[:, None]
+            #lambdas /= temperature
+            return total_counts, probs, alphas
 
     def save_model(self):
         if self.name is None:
