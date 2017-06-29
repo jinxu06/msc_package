@@ -463,6 +463,8 @@ class MixtureDensityNetwork(ConditionalModel):
             self.loss_func = "_mdn_gaussian_loss"
         elif self.base_model == "Poisson":
             self.loss_func = "_mdn_poisson_loss"
+        elif self.base_model == "NegativeBinomial":
+            self.loss_func = "_mdn_negative_binomial_loss"
         self.hyper_params_choices = enumerate_parameters(hyper_params)
         self.name = name
         self.n_components = None
@@ -721,7 +723,7 @@ class NDependencyNetwork(object):
             elif attr_type=='b':
                 targets = targets[:, 0]
                 num_classes = 2
-            elif attr_type=='i' or attr_type=='r':
+            elif attr_type=='i' or attr_type=='r' or attr_type=='ib':
                 targets = targets[:, 0]
 
             if str(method[0])==str(SklearnConditionalModel):
