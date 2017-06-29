@@ -511,7 +511,7 @@ class MixtureDensityNetwork(ConditionalModel):
 
     def _mdn_gaussian_loss(self, y_true, y_pred):
         if self.n_components is None:
-            self.n_components = y_pred.shape[1]/3
+            self.n_components = int(y_pred.shape[1]/3)
         self.mus = y_pred[:, :self.n_components]
         self.sigmas = Kb.exp(y_pred[:, self.n_components:self.n_components*2])
         self.alphas = Kb.softmax(y_pred[:, self.n_components*2:])
@@ -525,7 +525,7 @@ class MixtureDensityNetwork(ConditionalModel):
 
     def _mdn_poisson_loss(self, y_true, y_pred):
         if self.n_components is None:
-            self.n_components = y_pred.shape[1]/2
+            self.n_components = int(y_pred.shape[1]/2)
         self.lambdas = Kb.exp(y_pred[:, :self.n_components])
         self.alphas = Kb.softmax(y_pred[:, self.n_components:])
         exponent = Kb.log(self.alphas) + tf.contrib.distributions.Poisson(rate=self.lambdas).log_prob(y_true)
@@ -535,7 +535,7 @@ class MixtureDensityNetwork(ConditionalModel):
 
     def _mdn_negative_binomial_loss(self, y_true, y_pred):
         if self.n_components is None:
-            self.n_components = y_pred.shape[1]/3
+            self.n_components = int(y_pred.shape[1]/3)
         self.total_counts = Kb.exp(y_pred[:, :self.n_components])
         self.probs = Kb.sigmoid(y_pred[:, self.n_components:2*self.n_components])
         self.alphas = Kb.softmax(y_pred[:, 2*self.n_components:])
