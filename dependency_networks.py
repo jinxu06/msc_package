@@ -34,13 +34,14 @@ def log_sum_exp(x, axis=None):
 
 class ConditionalModel(object):
 
-    def __init__(self, attr_type):
-        pass
+    def __init__(self, attr_type, name):
+        self.name = name
+        self.model = None
 
     def fit(self, X, y, verbose=1):
         pass
 
-    def query_proba(self, X):
+    def predict_proba(self, X):
         pass
 
     def evaluate(self, X, y):
@@ -77,6 +78,19 @@ class ConditionalModel(object):
         self.set_model(best_hyper_params)
         self.fit(train_inputs, train_targets, verbose=verbose)
         return best_hyper_params, best_err
+
+    def save_model(self):
+        with open("../models/{0}.pkl".format(self.name), 'w') as f:
+            pkl.dump(self.model, f)
+
+
+    def load_model(self):
+        with open("../models/{0}.pkl".format(self.name), 'r') as f:
+            self.model = pkl.load(f)
+
+    def delete_model(self):
+        os.remove("../models/{0}.pkl".format(self.name))
+
 
 class GANDependencyNetwork(object):
 
@@ -400,9 +414,12 @@ class PoissonConditionalModel(ConditionalModel):
             arr.append(-np.log(p.pmf(t)))
         return np.mean(arr)
 
-    def query_proba(self, X, temperature=1.):
+    def predict_proba(self, X, temperature=1.):
         preds = self.model.predict(xgb.DMatrix(X))
         return preds[:, None], np.ones((preds.shape[0],1))
+
+
+
 
 class BaggingPoissonConditionalModel(ConditionalModel):
 
@@ -443,7 +460,7 @@ class BaggingPoissonConditionalModel(ConditionalModel):
             arr.append(-np.log(prob))
         return np.mean(arr)
 
-    def query_proba(self, X, temperature=1.):
+    def predict_proba(self, X, temperature=1.):
         all_preds = []
         for model in self.models:
             preds = model.predict(xgb.DMatrix(X))
@@ -553,7 +570,7 @@ class MixtureDensityNetwork(ConditionalModel):
     def evaluate(self, X, y, batch_size=100):
         return self.model.evaluate(X, y, batch_size=batch_size)
 
-    def query_proba(self, X, temperature=1.):
+    def predict_proba(self, X, temperature=1.):
         pred = self.model.predict(X)
         pred = pred.astype(np.float64)
         if self.base_model == 'Gaussian':
@@ -612,13 +629,13 @@ class SklearnConditionalModel(ConditionalModel):
         self.model.fit(X, y)
 
     def evaluate(self, X, y):
-        proba = self.query_proba(X)
+        proba = self.predict_proba(X)
         error = []
         for p, t in zip(proba, y):
             error.append(-np.log(p[t]))
         return np.mean(error)#, np.std(error, ddof=1) / len(error)
 
-    def query_proba(self, X, temperature=1.):
+    def predict_proba(self, X, temperature=1.):
         min_proba = 1e-8
         proba = self.model.predict_proba(X)
         proba = np.maximum(proba, min_proba)
@@ -636,51 +653,7 @@ class SklearnConditionalModel(ConditionalModel):
         predictions /= np.sum(predictions, axis=1)[:, None]
         return predictions
 
-    def save_model(self):
-        with open("../models/{0}.pkl".format(self.name), 'w') as f:
-            pkl.dump(self.model, f)
 
-
-    def load_model(self):
-        with open("../models/{0}.pkl".format(self.name), 'r') as f:
-            self.model = pkl.load(f)
-
-    def delete_model(self):
-        os.remove("../models/{0}.pkl".format(self.name))
-
-    """
-    def train_K_fold(self, K, X, y, K_max_run=None):
-        if K_max_run is None:
-            K_max_run = K
-        errs = []
-        for k in range(min(K, K_max_run)):
-            valid_index = range(k, X.shape[0],K)
-            t_inputs = np.delete(X, valid_index, axis=0)
-            t_targets = np.delete(y, valid_index, axis=0)
-            v_inputs = X[valid_index,:]
-            v_targets = y[valid_index]
-            self.fit(t_inputs, t_targets)
-            e = self.evaluate(v_inputs, v_targets)
-            errs.append(e)
-        return np.mean(errs)
-
-    def search_hyper_params(self, K, train_inputs, train_targets, K_max_run=None, random_max_run=None):
-        if random_max_run is None:
-            random_max_run = len(self.hyper_params_choices)
-        best_hyper_params = None
-        best_err = 1e10
-        for i in range(random_max_run):
-            hyper_params = self.hyper_params_choices[i]
-            self.set_model(hyper_params)
-            e = self.train_K_fold(K, train_inputs, train_targets, K_max_run=K_max_run)
-            if e < best_err:
-                best_err = e
-                best_hyper_params = hyper_params
-        self.set_model(best_hyper_params)
-        self.fit(train_inputs, train_targets)
-        return best_hyper_params, best_err
-
-    """
 
 class NDependencyNetwork(object):
 
@@ -776,6 +749,6 @@ class NDependencyNetwork(object):
     def query(self, query_inputs, temperature=1.):
         ret = []
         for model, mask, method in zip(self.models, self.masks, self.methods):
-            proba = model.query_proba(query_inputs * mask, temperature=temperature)
+            proba = model.predict_proba(query_inputs * mask, temperature=temperature)
             ret.append(proba)
         return ret

@@ -6,6 +6,81 @@ from sklearn.ensemble import RandomForestClassifier as RFClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.linear_model import LogisticRegression
 from contrib import enumerate_parameters
+from sklearn.metrics import *
+from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import RandomizedSearchCV
+from sklearn.metrics import classification_report
+
+class SklearnEstimator(object):
+
+    def __init__(self, estimator):
+        self.estimator = estimator
+
+    def print_params(self):
+        print self.estimator.get_params()
+
+    def set_params(self, params):
+        self.estimator.set_params(params)
+
+    def fit(self, X, y, sample_weight=None):
+        return self.estimator.fit(X, y, sample_weight)
+
+    def evaluate(self, X, y, metric, average="macro"):
+        if metric=='log_loss':
+            return log_loss(y, self.predict_proba(X))
+        metric = eval(metric)
+        try:
+            return metric(y, self.predict(X), average=average)
+        except TypeError:
+            return metric(y, self.predict(X))
+
+    def precision_recall_report(self, X, y_true, y_pred=None):
+        if y_pred is None:
+            y_pred = self.predict(X)
+        print classification_report(y_true, y_pred, digits=5)
+
+    def predict(self, X):
+        return self.estimator.predict(X)
+
+    def predict_proba(self, X):
+        return self.estimator.predict_proba(X)
+
+    def grid_search(self, X, y, param_grid, cv=3, scoring=None, n_jobs=1, verbose=1):
+        if scoring =="log_loss":
+            scoring = lambda e, x, y: log_loss(y, e.predict_proba(x))
+        gs = GridSearchCV(self.estimator, param_grid, scoring=scoring, cv=cv, refit=True, n_jobs=n_jobs)
+        gs.fit(X, y)
+        self.estimator = gs.best_estimator_
+        result = gs.cv_results_
+        if verbose>=2:
+            print "CV {0}".format(cv)
+        for params, score, std in zip(result['params'], result['mean_test_score'], result['std_test_score']):
+            if verbose >= 2:
+                print params
+                print "mean_test_score={0}, std_test_score={1}".format(score, std)
+        if verbose >=1:
+            print "best params -- {0}".format(gs.best_params_)
+            print "best_score -- {0}".format(gs.best_score_)
+
+    def randomized_search(self, X, y, param_distributions, n_iter, cv=3, scoring=None, n_jobs=1, verbose=1):
+        if scoring == "log_loss":
+            scoring = lambda e, x, y: log_loss(y, e.predict_proba(x))
+        rs = RandomizedSearchCV(self.estimator, param_distributions, n_iter=n_iter, scoring=scoring, cv=cv, refit=True, n_jobs=n_jobs)
+        rs.fit(X, y)
+        self.estimator = rs.best_estimator_
+        result = rs.cv_results_
+        if verbose>=2:
+            print "CV {0}".format(cv)
+        for params, score, std in zip(result['params'], result['mean_test_score'], result['std_test_score']):
+            if verbose >= 2:
+                print params
+                print "mean_test_score={0}, std_test_score={1}".format(score, std)
+        if verbose >=1:
+            print "best params -- {0}".format(rs.best_params_)
+            print "best_score -- {0}".format(rs.best_score_)
+
+
+"""
 
 class SklearnClassifier(object):
 
@@ -237,3 +312,5 @@ class NeuralNetworkClassifier(HighPerformanceClassifier):
         hidden_layer_sizes = [num_hidden_units for i in range(num_hidden_layers)]
         alpha = self.grid_search_params['alpha'][self.grid_search_pos]
         self.model = MLPClassifier(hidden_layer_sizes=hidden_layer_sizes, alpha=alpha, learning_rate='adaptive')
+
+"""
