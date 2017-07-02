@@ -56,7 +56,7 @@ class PerClassSyntheticDataGenerator(SyntheticDataGenerator):
         all_data = np.concatenate([all_data, sample_weight[:, None]], axis=1)
         if shuffle:
             np.random.shuffle(all_data)
-        return all_data[:, :-2], all_data[:, -2], all_data[:, :-1]
+        return all_data[:, :-2], all_data[:, -2], all_data[:, -1]
 
 
 class TargetsAsInputsSyntheticDataGenerator(SyntheticDataGenerator):
