@@ -24,9 +24,12 @@ class PerClassSyntheticDataGenerator(SyntheticDataGenerator):
         for c in range(self.num_classes):
             self.samplers[c].reset(initial_inputs[initial_targets==c])
 
-    def reset(self, initial_inputs, initial_targets):
+    def reset(self, initial_inputs=None, initial_targets=None):
+        if initial_inputs is not None:
+            self.initial_inputs = initial_inputs
+            self.initial_targets = initial_targets
         for c in range(self.num_classes):
-            self.samplers[c].reset(initial_inputs[initial_targets==c])
+            self.samplers[c].reset(self.initial_inputs[self.initial_targets==c])
 
     def run_sampling(self, num_round=1, skip=0, max_step=None):
 
@@ -45,6 +48,7 @@ class PerClassSyntheticDataGenerator(SyntheticDataGenerator):
             inputs, targets = self.run_sampling(num_round, skip, max_step)
             gen_data = np.concatenate([inputs, targets[:, None]], axis=1)
             all_gen_data.append(gen_data)
+            self.reset()
         all_data = np.concatenate(all_gen_data, axis=0)
         sample_weight = np.ones((all_data.shape[0], )) / multiple * weight_ratio
         if include_original_data:
