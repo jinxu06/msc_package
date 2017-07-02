@@ -1,8 +1,7 @@
 import numpy as np
 import tensorflow as tf
 from sklearn.svm import SVC
-from sklearn.ensemble import RandomForestClassifier as RFClassifier
-from sklearn.gaussian_process import GaussianProcessClassifier
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.naive_bayes import MultinomialNB
 import xgboost as xgb
 import time
@@ -10,7 +9,6 @@ import cPickle as pkl
 import os
 from contrib import enumerate_parameters
 from classifiers import SklearnClassifier
-from synthetic_data_discriminators import SyntheticDataDiscriminator
 
 from keras import backend as Kb
 from keras.models import Sequential

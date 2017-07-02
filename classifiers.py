@@ -2,7 +2,7 @@ import numpy as np
 import itertools
 import xgboost as xgb
 from sklearn.svm import SVC
-from sklearn.ensemble import RandomForestClassifier as RFClassifier
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.linear_model import LogisticRegression
 from contrib import enumerate_parameters
@@ -10,6 +10,7 @@ from sklearn.metrics import *
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.metrics import classification_report
+import warnings
 
 class SklearnEstimator(object):
 
@@ -23,7 +24,9 @@ class SklearnEstimator(object):
         self.estimator.set_params(params)
 
     def fit(self, X, y, sample_weight=None):
-        return self.estimator.fit(X, y, sample_weight)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            return self.estimator.fit(X, y, sample_weight)
 
     def evaluate(self, X, y, metric, average="macro"):
         if metric=='log_loss':
@@ -45,11 +48,13 @@ class SklearnEstimator(object):
     def predict_proba(self, X):
         return self.estimator.predict_proba(X)
 
-    def grid_search(self, X, y, param_grid, cv=3, scoring=None, n_jobs=1, verbose=1):
+    def grid_search(self, X, y, param_grid, sample_weight=None, cv=3, scoring=None, n_jobs=1, verbose=1):
         if scoring =="log_loss":
             scoring = lambda e, x, y: log_loss(y, e.predict_proba(x))
-        gs = GridSearchCV(self.estimator, param_grid, scoring=scoring, cv=cv, refit=True, n_jobs=n_jobs)
-        gs.fit(X, y)
+        gs = GridSearchCV(self.estimator, param_grid, scoring=scoring, cv=cv, refit=True, n_jobs=n_jobs, fit_params={"sample_weight":sample_weight})
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            rs.fit(X, y)
         self.estimator = gs.best_estimator_
         result = gs.cv_results_
         if verbose>=2:
@@ -62,11 +67,13 @@ class SklearnEstimator(object):
             print "best params -- {0}".format(gs.best_params_)
             print "best_score -- {0}".format(gs.best_score_)
 
-    def randomized_search(self, X, y, param_distributions, n_iter, cv=3, scoring=None, n_jobs=1, verbose=1):
+    def randomized_search(self, X, y, param_distributions, n_iter, sample_weight=None, cv=3, scoring=None, n_jobs=1, verbose=1):
         if scoring == "log_loss":
             scoring = lambda e, x, y: log_loss(y, e.predict_proba(x))
-        rs = RandomizedSearchCV(self.estimator, param_distributions, n_iter=n_iter, scoring=scoring, cv=cv, refit=True, n_jobs=n_jobs)
-        rs.fit(X, y)
+        rs = RandomizedSearchCV(self.estimator, param_distributions, n_iter=n_iter, scoring=scoring, cv=cv, refit=True, n_jobs=n_jobs, fit_params={"sample_weight":sample_weight})
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            rs.fit(X, y)  
         self.estimator = rs.best_estimator_
         result = rs.cv_results_
         if verbose>=2:
@@ -80,7 +87,7 @@ class SklearnEstimator(object):
             print "best_score -- {0}".format(rs.best_score_)
 
 
-"""
+
 
 class SklearnClassifier(object):
 
@@ -137,7 +144,7 @@ class SklearnClassifier(object):
             print "\n{0} -- Best Accuracy: {1}({2})\n".format(type(self).__name__, best_acc, best_std)
         return best_acc, best_std, best_model
 
-
+"""
 
 
 class HighPerformanceClassifier(object):

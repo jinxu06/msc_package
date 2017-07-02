@@ -16,7 +16,10 @@ class Sampler(object):
         self.inputs_block = inputs_block
         self.attr_types = attr_types
         self.initial_samples = initial_samples
-        self.cur_samples = self.initial_samples.copy()
+        if initial_samples is not None:
+            self.cur_samples = self.initial_samples.copy()
+        else:
+            self.cur_samples = None
         self.max_step = len(attr_types)
         self.cur_round = 0
         self.cur_step = 0
@@ -33,7 +36,7 @@ class Sampler(object):
 
     def draw_samples_for_one_round(self, max_step=None):
         self.cur_round += 1
-        self.step = 0
+        self.cur_step = 0
         if max_step is None:
             max_step = self.max_step
         else:
@@ -42,14 +45,20 @@ class Sampler(object):
             self.draw_samples_for_one_step()
         return self.cur_samples
 
-    def run_sampling(self, num_round=1, max_step=None):
-        for r in range(num_round):
+    def run_sampling(self, num_round=1, skip=0, max_step=None):
+        all_samples = []
+        for r in range(skip):
             self.draw_samples_for_one_round(max_step)
+        for r in range(num_round):
+            all_samples.append(self.draw_samples_for_one_round(max_step))
+        return np.concatenate(all_samples, axis=0)
 
 class BlockGibbsSampler(Sampler):
 
-    def __init__(self, inputs_block, attr_types, sampling_order, query_func, initial_samples=None, distribution_mapping=None):
-        self.sampling_order = self.sampling_order
+    def __init__(self, inputs_block, attr_types, query_func, sampling_order=None, initial_samples=None, distribution_mapping=None):
+        if sampling_order is None:
+            sampling_order = np.random.permutation(len(attr_types))
+        self.sampling_order = sampling_order
         self.query_func = query_func
         super(BlockGibbsSampler, self).__init__(inputs_block, attr_types, initial_samples, distribution_mapping)
 
