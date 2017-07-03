@@ -48,7 +48,7 @@ class SklearnEstimator(object):
     def predict_proba(self, X):
         return self.estimator.predict_proba(X)
 
-    def train_valid_search(self, X, y, v_X, v_y, param_grid, sample_weight, v_sample_weight, max_num_run=None, verbose=1):
+    def train_valid_search(self, X, y, v_X, v_y, param_grid, sample_weight=None, v_sample_weight=None, max_num_run=None, verbose=1):
         hyper_params = enumerate_parameters(param_grid)
         hyper_params = np.random.choice(hyper_params, size=len(hyper_params), replace=False)
         if max_num_run is None:
@@ -67,9 +67,16 @@ class SklearnEstimator(object):
         print "best ------"
         print best_params
         print best_score
-
-        train_data = np.concatenate([X, y[:, None], sample_weight[:, None]], axis=1)
-        valid_data = np.concatenate([v_X, v_y[:, None], v_sample_weight[:, None]], axis=1)
+        if sample_weight is None:
+            sw = None
+        else:
+            sw = sample_weight[:, None]
+        if v_sample_weight is None:
+            vsw = None
+        else:
+            vsw = v_sample_weight[:, None]
+        train_data = np.concatenate([X, y[:, None], sw], axis=1)
+        valid_data = np.concatenate([v_X, v_y[:, None], vsw], axis=1)
         all_data = np.concatenate([train_data, valid_data], axis=0)
         np.random.shuffle(all_data)
         self.set_params(best_params)
