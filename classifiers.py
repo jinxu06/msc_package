@@ -68,8 +68,8 @@ class SklearnEstimator(object):
         print best_params
         print best_score
 
-        train_data = np.concatenate([X, y[:, None], sample_weight[:, None]], axis=0)
-        valid_data = np.concatenate([v_X, v_y[:, None], v_sample_weight[:, None]], axis=0)
+        train_data = np.concatenate([X, y[:, None], sample_weight[:, None]], axis=1)
+        valid_data = np.concatenate([v_X, v_y[:, None], v_sample_weight[:, None]], axis=1)
         all_data = np.concatenate([train_data, valid_data], axis=0)
         np.random.shuffle(all_data)
         self.set_params(best_params)
