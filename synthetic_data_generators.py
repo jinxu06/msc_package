@@ -39,8 +39,10 @@ class PerClassSyntheticDataGenerator(SyntheticDataGenerator):
             inputs[targets==c] = self.samplers[c].run_sampling(num_round, skip, max_step)
         return inputs, targets
 
-    def generate(self, multiple, weight_ratio, num_round=1, skip=0, max_step=None, include_original_data=False, shuffle=False):
+    def generate(self, multiple, weight_ratio, num_round=1, skip=0, max_step=None, include_original_data=False, shuffle=False, test_split=0.3):
         all_gen_data = []
+        test_mask = np.zeros((self.initial_inputs.shape[0], ))
+        test_mask[int(test_mask.shape[0]*test_split):] = 1
         if include_original_data:
             train_data = np.concatenate([self.initial_inputs, self.initial_targets[:, None]], axis=1)
             all_gen_data.append(train_data)
@@ -53,10 +55,11 @@ class PerClassSyntheticDataGenerator(SyntheticDataGenerator):
         sample_weight = np.ones((all_data.shape[0], )) / multiple * weight_ratio
         if include_original_data:
             sample_weight[:train_data.shape[0]] = 1.
-        all_data = np.concatenate([all_data, sample_weight[:, None]], axis=1)
+        test_mask = np.concatenate([test_mask for i in range(all_data.shape[0]/self.initial_inputs.shape[0])], axis=0)
+        all_data = np.concatenate([all_data, sample_weight[:, None], test_mask[:, None]], axis=1)
         if shuffle:
             np.random.shuffle(all_data)
-        return all_data[:, :-2], all_data[:, -2], all_data[:, -1]
+        return all_data[:, :-3], all_data[:, -3], all_data[:, -2], all_data[:, -1]
 
 
 class TargetsAsInputsSyntheticDataGenerator(SyntheticDataGenerator):

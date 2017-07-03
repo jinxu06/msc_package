@@ -48,6 +48,33 @@ class SklearnEstimator(object):
     def predict_proba(self, X):
         return self.estimator.predict_proba(X)
 
+    def train_valid_search(self, X, y, v_X, v_y, param_grid, sample_weight, v_sample_weight, max_num_run=None, verbose=1):
+        hyper_params = enumerate_parameters(param_grid)
+        hyper_params = np.random.choice(hyper_params, size=len(hyper_params), replace=False)
+        if max_num_run is None:
+            max_num_run = len(hyper_params)
+        best_params = None
+        best_score = 0
+        for r in range(max_num_run):
+            self.set_params(hyper_params[r])
+            self.fit(X, y, sample_weight=sample_weight)
+            print hyper_params[r]
+            score = self.estimator.score(v_X, v_y, sample_weight=v_sample_weight)
+            print score
+            if score > best_score:
+                best_score = score
+                best_params = hyper_params[r]
+        print "best ------"
+        print best_params
+        print best_score
+
+        train_data = np.concatenate([X, y[:, None], sample_weight[:, None]], axis=0)
+        valid_data = np.concatenate([v_X, v_y[:, None], v_sample_weight[:, None]], axis=0)
+        all_data = np.concatenate([train_data, valid_data], axis=0)
+        np.random.shuffle(all_data)
+        self.set_params(best_params)
+        self.fit(all_data[:, :-2], all_data[:, -2], sample_weight=all_data[:, -1])
+
     def grid_search(self, X, y, param_grid, sample_weight=None, cv=3, scoring=None, n_jobs=1, verbose=1):
         if scoring =="log_loss":
             scoring = lambda e, x, y: log_loss(y, e.predict_proba(x))
@@ -73,7 +100,7 @@ class SklearnEstimator(object):
         rs = RandomizedSearchCV(self.estimator, param_distributions, n_iter=n_iter, scoring=scoring, cv=cv, refit=True, n_jobs=n_jobs, fit_params={"sample_weight":sample_weight})
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            rs.fit(X, y)  
+            rs.fit(X, y)
         self.estimator = rs.best_estimator_
         result = rs.cv_results_
         if verbose>=2:
