@@ -13,4 +13,7 @@ def load_dataset(name, which):
     meta['which'] = which
     meta['size'] = inputs.shape[0]
     del meta['train_size'], meta['valid_size'], meta['test_size']
+    rng = np.random.RandomState(123)
+    d = rng.permutation(np.concatenate([meta['inputs'], meta['targets'][:,None]], axis=1))
+    meta['inputs'], meta['targets'] = d[:, :-1], d[:, -1]
     return meta
