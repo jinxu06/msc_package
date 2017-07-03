@@ -48,7 +48,7 @@ class SklearnEstimator(object):
     def predict_proba(self, X):
         return self.estimator.predict_proba(X)
 
-    def train_valid_search(self, X, y, v_X, v_y, param_grid, sample_weight=None, v_sample_weight=None, max_num_run=None, verbose=1):
+    def train_valid_search(self, X, y, v_X, v_y, param_grid, sample_weight=None, v_sample_weight=None, max_num_run=None, refit=False, verbose=1):
         hyper_params = enumerate_parameters(param_grid)
         hyper_params = np.random.choice(hyper_params, size=len(hyper_params), replace=False)
         if max_num_run is None:
@@ -76,7 +76,8 @@ class SklearnEstimator(object):
         all_data = np.concatenate([train_data, valid_data], axis=0)
         np.random.shuffle(all_data)
         self.set_params(best_params)
-        self.fit(all_data[:, :-2], all_data[:, -2], sample_weight=all_data[:, -1])
+        if refit:
+            self.fit(all_data[:, :-2], all_data[:, -2], sample_weight=all_data[:, -1])
 
     def grid_search(self, X, y, param_grid, sample_weight=None, cv=3, scoring=None, n_jobs=1, verbose=1):
         if scoring =="log_loss":
