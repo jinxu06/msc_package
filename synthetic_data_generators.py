@@ -42,7 +42,7 @@ class PerClassSyntheticDataGenerator(SyntheticDataGenerator):
     def generate(self, multiple, weight_ratio, num_round=1, skip=0, max_step=None, include_original_data=False, shuffle=False, test_split=0.3):
         all_gen_data = []
         test_mask = np.zeros((self.initial_inputs.shape[0], ))
-        test_mask[int(test_mask.shape[0]*test_split):] = 1
+        test_mask[-int(test_mask.shape[0]*test_split):] = 1
         if include_original_data:
             train_data = np.concatenate([self.initial_inputs, self.initial_targets[:, None]], axis=1)
             all_gen_data.append(train_data)
