@@ -21,7 +21,7 @@ class SklearnEstimator(object):
         print self.estimator.get_params()
 
     def set_params(self, params):
-        self.estimator.set_params(params)
+        self.estimator.set_params(**params)
 
     def fit(self, X, y, sample_weight=None):
         with warnings.catch_warnings():
