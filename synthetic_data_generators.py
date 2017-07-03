@@ -118,9 +118,11 @@ class TargetsAsInputsSyntheticDataGenerator(SyntheticDataGenerator):
             print "gen {0}".format(m+1)
         all_data = np.concatenate(all_gen_data, axis=0)
         sample_weight = np.ones((all_data.shape[0], )) / multiple * weight_ratio
+        test_mask = np.concatenate([test_mask.copy() for i in range(all_data.shape[0]/self.initial_inputs.shape[0])], axis=0) * 2
         if include_original_data:
             sample_weight[:train_data.shape[0]] = 1.
-        test_mask = np.concatenate([test_mask for i in range(all_data.shape[0]/self.initial_inputs.shape[0])], axis=0)
+            ref = test_mask[:train_data.shape[0]]
+            ref[ref==2] = 1
         all_data = np.concatenate([all_data, sample_weight[:, None], test_mask[:, None]], axis=1)
         if shuffle:
             np.random.shuffle(all_data)
