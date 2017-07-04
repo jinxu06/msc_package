@@ -58,15 +58,18 @@ class SklearnEstimator(object):
         for r in range(max_num_run):
             self.set_params(hyper_params[r])
             self.fit(X, y, sample_weight=sample_weight)
-            print hyper_params[r]
+            if verbose>=2:
+                print hyper_params[r]
             score = self.estimator.score(v_X, v_y, sample_weight=v_sample_weight)
-            print score
+            if verbose>=2:
+                print score
             if score > best_score:
                 best_score = score
                 best_params = hyper_params[r]
-        print "best ------"
-        print best_params
-        print best_score
+        if verbose>=1:
+            print "best ------"
+            print best_params
+            print best_score
         if sample_weight is None:
             sample_weight = np.ones((X.shape[0], ))
         if v_sample_weight is None:
