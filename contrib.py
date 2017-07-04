@@ -59,7 +59,7 @@ def ensemble_query(dns_ens):
 
 
 
-def enumerate_parameters(params_choices, key_order=None):
+def enumerate_parameters(params_choices, key_order=None, shuffle=False):
     if key_order is None:
         keys = list(params_choices.keys())
     else:
@@ -73,6 +73,8 @@ def enumerate_parameters(params_choices, key_order=None):
         for i in range(len(keys)):
             dic[keys[i]] = params[i]
         all_choices.append(dic)
+    if shuffle:
+        all_choices = np.random.choice(all_choices, size=len(all_choices), replace=False)
     return all_choices
 
 

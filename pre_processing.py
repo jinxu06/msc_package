@@ -7,13 +7,14 @@ def __smallest_gap(seq):
     return seq[seq>0].min()
 
 def add_uniform_noise(inputs, strength = 1.):
+    rng = np.random.RandomState(123)
     inputs = inputs.copy().astype(np.float64)
     gaps = []
     for i in range(inputs.shape[1]):
         gaps.append(__smallest_gap(inputs[:, i]))
     for i in range(inputs.shape[1]):
         gap = gaps[i]*strength
-        inputs[:, i] += np.random.uniform(-gap/2., gap/2., size=(inputs.shape[0],))
+        inputs[:, i] += rng.uniform(-gap/2., gap/2., size=(inputs.shape[0],))
     return inputs
 
 def discretize_counts(inputs, less_than):
