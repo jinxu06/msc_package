@@ -70,7 +70,7 @@ class TargetsAsInputsSyntheticDataGenerator(SyntheticDataGenerator):
     def __init__(self, initial_inputs, initial_targets, sampler, num_classes=None, targets_type='c'):
         super(TargetsAsInputsSyntheticDataGenerator, self).__init__(initial_inputs, initial_targets)
         if targets_type=='c' and num_classes is None:
-            num_classes = max(initial_targets) + 1
+            num_classes = int(max(initial_targets)) + 1
         self.num_classes = num_classes
         self.sampler = sampler
         self.targets_type = targets_type
