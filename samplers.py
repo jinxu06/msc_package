@@ -63,7 +63,7 @@ class BlockGibbsSampler(Sampler):
         super(BlockGibbsSampler, self).__init__(inputs_block, attr_types, initial_samples, distribution_mapping)
 
     def reset(self, initial_samples=None):
-        self.sampling_order = np.random.permutation(len(attr_types))
+        self.sampling_order = np.random.permutation(len(self.attr_types))
         super(BlockGibbsSampler, self).__init__(initial_samples)
 
 
