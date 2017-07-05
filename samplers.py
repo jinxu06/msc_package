@@ -62,6 +62,11 @@ class BlockGibbsSampler(Sampler):
         self.query_func = query_func
         super(BlockGibbsSampler, self).__init__(inputs_block, attr_types, initial_samples, distribution_mapping)
 
+    def reset(self, initial_samples=None):
+        self.sampling_order = np.random.permutation(len(attr_types))
+        super(BlockGibbsSampler, self).__init__(initial_samples)
+
+
     def draw_samples_for_one_step(self):
         o = self.sampling_order[self.cur_step]
         cond_prob = self.query_func(self.cur_samples)[o]
