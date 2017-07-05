@@ -64,7 +64,7 @@ class BlockGibbsSampler(Sampler):
 
     def reset(self, initial_samples=None):
         self.sampling_order = np.random.permutation(len(self.attr_types))
-        super(BlockGibbsSampler, self).__init__(initial_samples)
+        super(BlockGibbsSampler, self).reset(initial_samples)
 
 
     def draw_samples_for_one_step(self):
@@ -167,7 +167,7 @@ class RandomizedSampler(Sampler):
             for i in range(initial_samples.shape[0]):
                 arr.append(np.random.permutation(initial_samples.shape[1]))
             self.sampling_order = np.array(arr)
-        super(RandomizedSampler, self).__init__(initial_samples)
+        super(RandomizedSampler, self).reset(initial_samples)
 
 
 
