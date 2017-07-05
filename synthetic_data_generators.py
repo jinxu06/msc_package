@@ -5,8 +5,8 @@ from samplers import *
 class SyntheticDataGenerator(object):
 
     def __init__(self, initial_inputs, initial_targets):
-        self.initial_inputs = initial_inputs
-        self.initial_targets = initial_targets
+        self.initial_inputs = initial_inputs.copy()
+        self.initial_targets = initial_targets.copy()
 
     def generate(self, num_round, include_initial_data=True):
         pass
@@ -18,16 +18,14 @@ class PerClassSyntheticDataGenerator(SyntheticDataGenerator):
         if num_classes is None:
             num_classes = int(max(initial_targets)) + 1
         self.num_classes = num_classes
-        self.initial_inputs = initial_inputs
-        self.initial_targets = initial_targets
         self.samplers = samplers
         for c in range(self.num_classes):
             self.samplers[c].reset(initial_inputs[initial_targets==c])
 
     def reset(self, initial_inputs=None, initial_targets=None):
         if initial_inputs is not None:
-            self.initial_inputs = initial_inputs
-            self.initial_targets = initial_targets
+            self.initial_inputs = initial_inputs.copy()
+            self.initial_targets = initial_targets.copy()
         for c in range(self.num_classes):
             self.samplers[c].reset(self.initial_inputs[self.initial_targets==c])
 

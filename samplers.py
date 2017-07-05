@@ -43,7 +43,7 @@ class Sampler(object):
             max_step = min(max_step, self.max_step)
         for step in range(max_step):
             self.draw_samples_for_one_step()
-        return self.cur_samples
+        return self.cur_samples.copy()
 
     def run_sampling(self, num_round=1, skip=0, max_step=None):
         all_samples = []
@@ -111,7 +111,7 @@ class BlockGibbsSampler(Sampler):
             raise Exception("model not found")
         self.cur_samples = samples
         self.cur_step += 1
-        return self.cur_samples
+        return self.cur_samples.copy()
 
 class RandomizedSampler(Sampler):
 
@@ -159,7 +159,7 @@ class RandomizedSampler(Sampler):
                 raise Exception("model not found")
         self.cur_samples = samples
         self.cur_step += 1
-        return self.cur_samples
+        return self.cur_samples.copy()
 
     def reset(self, initial_samples=None):
         if initial_samples is not None:
