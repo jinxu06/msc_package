@@ -66,7 +66,7 @@ class ConditionalModel(object):
             random_max_run = len(self.hyper_params_choices)
         best_hyper_params = None
         best_err = 1e10
-        for i in range(random_max_run):
+        for i in range(min(random_max_run, len(self.hyper_params_choices))):
             hyper_params = self.hyper_params_choices[i]
             self.set_model(hyper_params)
             e = self.train_K_fold(K, train_inputs, train_targets, K_max_run=K_max_run, verbose=verbose)
