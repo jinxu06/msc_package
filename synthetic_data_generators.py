@@ -52,7 +52,7 @@ class PerClassSyntheticDataGenerator(SyntheticDataGenerator):
             gen_data = np.concatenate([inputs, targets[:, None]], axis=1)
             all_gen_data.append(gen_data)
             self.sampling_order = np.random.permutation(self.samplers[0].attr_types)
-            self.reset(self.sampling_order)
+            self.reset(sampling_order=self.sampling_order)
             print "gen {0}".format(m+1)
         all_data = np.concatenate(all_gen_data, axis=0)
         sample_weight = np.ones((all_data.shape[0], )) / multiple * weight_ratio
@@ -140,7 +140,7 @@ class TargetsAsInputsSyntheticDataGenerator(SyntheticDataGenerator):
             gen_data = np.concatenate([inputs, targets[:, None]], axis=1)
             all_gen_data.append(gen_data)
             self.sampling_order = np.random.permutation(self.sampler.attr_types)
-            self.reset(self.sampling_order)
+            self.reset(sampling_order=self.sampling_order)
             print "gen {0}".format(m+1)
         all_data = np.concatenate(all_gen_data, axis=0)
         sample_weight = np.ones((all_data.shape[0], )) / multiple * weight_ratio
