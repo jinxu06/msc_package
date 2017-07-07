@@ -48,11 +48,11 @@ class PerClassSyntheticDataGenerator(SyntheticDataGenerator):
             train_data = np.concatenate([self.initial_inputs, self.initial_targets[:, None]], axis=1)
             all_gen_data.append(train_data)
         for m in range(multiple):
+            self.sampling_order = np.random.permutation(len(self.samplers[0].attr_types))
+            self.reset(sampling_order=self.sampling_order)
             inputs, targets = self.run_sampling(num_round, skip, max_step)
             gen_data = np.concatenate([inputs, targets[:, None]], axis=1)
             all_gen_data.append(gen_data)
-            self.sampling_order = np.random.permutation(len(self.samplers[0].attr_types))
-            self.reset(sampling_order=self.sampling_order)
             print "gen {0}".format(m+1)
         all_data = np.concatenate(all_gen_data, axis=0)
         sample_weight = np.ones((all_data.shape[0], )) / multiple * weight_ratio
@@ -136,11 +136,11 @@ class TargetsAsInputsSyntheticDataGenerator(SyntheticDataGenerator):
             train_data = np.concatenate([self.initial_inputs, self.initial_targets[:, None]], axis=1)
             all_gen_data.append(train_data)
         for m in range(multiple):
+            self.sampling_order = np.random.permutation(len(self.sampler.attr_types))
+            self.reset(sampling_order=self.sampling_order)
             inputs, targets = self.run_sampling(num_round, skip, max_step)
             gen_data = np.concatenate([inputs, targets[:, None]], axis=1)
             all_gen_data.append(gen_data)
-            self.sampling_order = np.random.permutation(len(self.sampler.attr_types))
-            self.reset(sampling_order=self.sampling_order)
             print "gen {0}".format(m+1)
         all_data = np.concatenate(all_gen_data, axis=0)
         sample_weight = np.ones((all_data.shape[0], )) / multiple * weight_ratio
