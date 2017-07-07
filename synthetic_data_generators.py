@@ -23,7 +23,8 @@ class SyntheticDataGenerator(object):
             inputs, targets = self.run_sampling(num_round, skip, max_step)
             gen_data = np.concatenate([inputs, targets[:, None]], axis=1)
             all_gen_data.append(gen_data)
-            self.reset()
+            sampling_order = np.random.permutation(len(attr_types))
+            self.reset(sampling_order=sampling_order)
             print "gen {0}".format(m+1)
         all_data = np.concatenate(all_gen_data, axis=0)
         sample_weight = np.ones((all_data.shape[0], )) / multiple * weight_ratio

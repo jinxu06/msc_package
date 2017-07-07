@@ -62,8 +62,10 @@ class BlockGibbsSampler(Sampler):
         self.query_func = query_func
         super(BlockGibbsSampler, self).__init__(inputs_block, attr_types, initial_samples, distribution_mapping)
 
-    def reset(self, initial_samples=None):
-        self.sampling_order = np.random.permutation(len(self.attr_types))
+    def reset(self, initial_samples=None, sampling_order=None):
+        if sampling_order is None:
+            sampling_order = np.random.permutation(len(self.attr_types))
+        self.sampling_order = sampling_order
         super(BlockGibbsSampler, self).reset(initial_samples)
 
 
@@ -161,9 +163,9 @@ class RandomizedSampler(Sampler):
         self.cur_step += 1
         return self.cur_samples.copy()
 
-    def reset(self, initial_samples=None):
+    def reset(self, initial_samples=None, sampling_order=None):
         super(RandomizedSampler, self).reset(initial_samples)
-        if self.initial_samples is not None:        
+        if self.initial_samples is not None:
             arr = []
             for i in range(self.initial_samples.shape[0]):
                 arr.append(np.random.permutation(self.initial_samples.shape[1]))
