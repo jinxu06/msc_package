@@ -162,13 +162,12 @@ class RandomizedSampler(Sampler):
         return self.cur_samples.copy()
 
     def reset(self, initial_samples=None):
-        if initial_samples is not None:
-            arr = []
-            for i in range(initial_samples.shape[0]):
-                arr.append(np.random.permutation(initial_samples.shape[1]))
-            self.sampling_order = np.array(arr)
         super(RandomizedSampler, self).reset(initial_samples)
-
+        if self.initial_samples is not None:        
+            arr = []
+            for i in range(self.initial_samples.shape[0]):
+                arr.append(np.random.permutation(self.initial_samples.shape[1]))
+            self.sampling_order = np.array(arr)
 
 
 """

@@ -2,6 +2,7 @@ import numpy as np
 import itertools
 import xgboost as xgb
 from sklearn.svm import SVC
+from sklearn.base import clone
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.linear_model import LogisticRegression
@@ -56,6 +57,7 @@ class SklearnEstimator(object):
         best_params = None
         best_score = 0
         for r in range(max_num_run):
+            self.estimator = clone(self.estimator)
             self.set_params(hyper_params[r])
             self.fit(X, y, sample_weight=sample_weight)
             if verbose>=2:
@@ -80,6 +82,7 @@ class SklearnEstimator(object):
         np.random.shuffle(all_data)
         self.set_params(best_params)
         if refit:
+            self.estimator = clone(self.estimator)
             self.fit(all_data[:, :-2], all_data[:, -2], sample_weight=all_data[:, -1])
 
     def grid_search(self, X, y, param_grid, sample_weight=None, cv=3, scoring=None, n_jobs=1, verbose=1):
