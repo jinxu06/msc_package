@@ -122,7 +122,7 @@ class RandomizedSampler(Sampler):
         if initial_samples is not None:
             arr = []
             for i in range(initial_samples.shape[0]):
-                arr.append(np.random.permutation(initial_samples.shape[1]))
+                arr.append(np.random.permutation(len(attr_types)))
             self.sampling_order = np.array(arr)
         super(RandomizedSampler, self).__init__(inputs_block, attr_types, initial_samples, distribution_mapping)
 
@@ -168,7 +168,7 @@ class RandomizedSampler(Sampler):
         if self.initial_samples is not None:
             arr = []
             for i in range(self.initial_samples.shape[0]):
-                arr.append(np.random.permutation(self.initial_samples.shape[1]))
+                arr.append(np.random.permutation(len(self.attr_types)))
             self.sampling_order = np.array(arr)
 
 
