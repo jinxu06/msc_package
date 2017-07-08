@@ -124,7 +124,7 @@ class RandomizedSampler(Sampler):
             for i in range(initial_samples.shape[0]):
                 arr.append(np.random.permutation(initial_samples.shape[1]))
             self.sampling_order = np.array(arr)
-        super(BlockGibbsSampler, self).__init__(inputs_block, attr_types, initial_samples, distribution_mapping)
+        super(RandomizedSampler, self).__init__(inputs_block, attr_types, initial_samples, distribution_mapping)
 
     def draw_samples_for_one_step(self):
         cond_probs = self.query_func(self.cur_samples)
