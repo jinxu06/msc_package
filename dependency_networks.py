@@ -704,9 +704,9 @@ class NDependencyNetwork(object):
             elif str(method[0])==str(MixtureDensityNetwork):
                 model = MixtureDensityNetwork(method[1], hyper_params, train_inputs.shape[-1], random=True, name=self.name+str(block[0]))
             elif str(method[0])==str(PoissonConditionalModel):
-                model = PoissonConditionalModel(hyper_params)
+                model = PoissonConditionalModel(hyper_params, random=True, name=self.name+str(block[0]))
             elif str(method[0])==str(BaggingPoissonConditionalModel):
-                model = BaggingPoissonConditionalModel(hyper_params)
+                model = BaggingPoissonConditionalModel(hyper_params, random=True, name=self.name+str(block[0]))
             else:
                 raise Exception("model not found")
             cur = time.time()
