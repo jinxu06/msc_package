@@ -109,7 +109,7 @@ class TargetsAsInputsSyntheticDataGenerator(SyntheticDataGenerator):
             encoded_targets = encoded_targets.astype(np.int32)
             self.initial_data = np.concatenate([self.initial_inputs, encoded_targets], axis=1)
         else:
-            self.initial_data = np.concatenate([self.initial_inputs, self.initial_targets], axis=1)
+            self.initial_data = np.concatenate([self.initial_inputs, self.initial_targets[:, None]], axis=1)
         self.sampler.reset(self.initial_data)
 
     def reset(self, initial_inputs=None, initial_targets=None, sampling_order=None):
@@ -121,7 +121,7 @@ class TargetsAsInputsSyntheticDataGenerator(SyntheticDataGenerator):
                 encoded_targets = encoded_targets.astype(np.int32)
                 self.initial_data = np.concatenate([self.initial_inputs, encoded_targets], axis=1)
             else:
-                self.initial_data = np.concatenate([self.initial_inputs, self.initial_targets], axis=1)
+                self.initial_data = np.concatenate([self.initial_inputs, self.initial_targets[:, None]], axis=1)
         self.sampler.reset(self.initial_data, sampling_order=sampling_order)
 
     def run_sampling(self, num_round=1, skip=0, max_step=None):
