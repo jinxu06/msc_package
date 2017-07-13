@@ -42,20 +42,26 @@ class PerClassSyntheticDataGenerator(SyntheticDataGenerator):
             inputs[targets==c] = self.samplers[c].run_sampling(num_round, skip, max_step)
         return inputs, targets
 
-    def generate(self, multiple, weight_ratio, num_round=1, skip=0, max_step=None, include_original_data=False, shuffle=False):
+    def generate(self, multiple, weight_ratio=1.0, num_round=1, skip=0, max_step=None, include_original_data=False, shuffle=False, dis=None):
         all_gen_data = []
         if include_original_data:
             train_data = np.concatenate([self.initial_inputs, self.initial_targets[:, None]], axis=1)
             all_gen_data.append(train_data)
+        imp_weights = []
         for m in range(multiple):
             self.sampling_order = np.random.permutation(len(self.samplers[0].attr_types))
             self.reset(sampling_order=self.sampling_order)
             inputs, targets = self.run_sampling(num_round, skip, max_step)
+            if dis is not None:
+                imp_weights.append(dis(inputs, targets, self.initial_inputs, self.initial_targets))
             gen_data = np.concatenate([inputs, targets[:, None]], axis=1)
             all_gen_data.append(gen_data)
             print "gen {0}".format(m+1)
         all_data = np.concatenate(all_gen_data, axis=0)
         sample_weight = np.ones((all_data.shape[0], )) / multiple * weight_ratio
+        if dis is not None:
+            imp_weights = np.concatenate(imp_weights, axis=0)
+            sample_weight[-imp_weights.shape[0]:] *= imp_weights
         is_train = np.zeros_like(sample_weight)
         if include_original_data:
             sample_weight[:train_data.shape[0]] = 1.
@@ -134,20 +140,26 @@ class TargetsAsInputsSyntheticDataGenerator(SyntheticDataGenerator):
             inputs, targets = data[:, :-1], data[:, -1]
         return inputs, targets
 
-    def generate(self, multiple, weight_ratio, num_round=1, skip=0, max_step=None, include_original_data=False, shuffle=False):
+    def generate(self, multiple, weight_ratio=1.0, num_round=1, skip=0, max_step=None, include_original_data=False, shuffle=False, dis=None):
         all_gen_data = []
         if include_original_data:
             train_data = np.concatenate([self.initial_inputs, self.initial_targets[:, None]], axis=1)
             all_gen_data.append(train_data)
+        imp_weights = []
         for m in range(multiple):
             self.sampling_order = np.random.permutation(len(self.sampler.attr_types))
             self.reset(sampling_order=self.sampling_order)
             inputs, targets = self.run_sampling(num_round, skip, max_step)
+            if dis is not None:
+                imp_weights.append(dis(inputs, targets, self.initial_inputs, self.initial_targets))
             gen_data = np.concatenate([inputs, targets[:, None]], axis=1)
             all_gen_data.append(gen_data)
             print "gen {0}".format(m+1)
         all_data = np.concatenate(all_gen_data, axis=0)
         sample_weight = np.ones((all_data.shape[0], )) / multiple * weight_ratio
+        if dis is not None:
+            imp_weights = np.concatenate(imp_weights, axis=0)
+            sample_weight[-imp_weights.shape[0]:] *= imp_weights
         is_train = np.zeros_like(sample_weight)
         if include_original_data:
             sample_weight[:train_data.shape[0]] = 1.
