@@ -82,7 +82,7 @@ class RBMModel(JointModel):
         self.model = BernoulliRBM(**params)
 
     def evaluate(self, X):
-        return self.model.score_samples(X)
+        return self.model.score_samples(X).mean()
 
     def generate_samples(self, start, step=1):
         for i in range(step):
