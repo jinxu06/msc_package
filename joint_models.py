@@ -75,9 +75,7 @@ class JointModel(object):
 class RBMModel(JointModel):
 
     def __init__(self, hyper_params, random=True, name=None):
-
         super(RBMModel, self).__init__(hyper_params, random, name)
-
         self.model = BernoulliRBM()
 
     def set_params(self, params):
@@ -85,3 +83,23 @@ class RBMModel(JointModel):
 
     def evaluate(self, X):
         return self.model.score_samples(X)
+
+    def generate_samples(self, start, step=1):
+        for i in range(step):
+            start = self.model.gibbs(start)
+        return start
+
+class GaussianMixtureModel(JointModel):
+
+    def __init__(self, hyper_params, random=True, name=None):
+        super(GaussianMixtureModel, self).__init__(hyper_params, random, name)
+        self.model = GaussianMixture()
+
+    def set_params(self, params):
+        self.model = GaussianMixture(**params)
+
+    def evaluate(self, X):
+        return self.model.score(X)
+
+    def generate_samples(self, n_samples):
+        return self.model.sample(n_samples)
