@@ -1,4 +1,7 @@
 import numpy as np
+import time
+import cPickle as pkl
+import os
 from contrib import enumerate_parameters
 from sklearn.neural_network import BernoulliRBM
 from sklearn.mixture import GaussianMixture
