@@ -71,9 +71,9 @@ class JointModel(object):
 
 class RBMModel(JointModel):
 
-    def __init__(self, hyper_params, random=True):
+    def __init__(self, hyper_params, random=True, name=None):
 
-        super(RBMModel, self).__init__(hyper_params, random)
+        super(RBMModel, self).__init__(hyper_params, random, name)
 
         self.model = BernoulliRBM()
 
