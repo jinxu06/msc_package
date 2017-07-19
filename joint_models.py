@@ -5,9 +5,9 @@ from sklearn.mixture import GaussianMixture
 
 class JointModel(object):
 
-    def __init__(self, hyper_params, random=True):
+    def __init__(self, hyper_params, random=True, name=None):
         self.model = None
-
+        self.name = name
         self.hyper_params_choices = enumerate_parameters(hyper_params)
         if random:
             num_choices = len(self.hyper_params_choices)
@@ -55,6 +55,18 @@ class JointModel(object):
         self.set_params(best_hyper_params)
         self.fit(train_inputs)
         return best_hyper_params, best_score
+
+    def save_model(self):
+        with open("../models/{0}.pkl".format(self.name), 'w') as f:
+            pkl.dump(self.model, f)
+
+
+    def load_model(self):
+        with open("../models/{0}.pkl".format(self.name), 'r') as f:
+            self.model = pkl.load(f)
+
+    def delete_model(self):
+        os.remove("../models/{0}.pkl".format(self.name))
 
 
 class RBMModel(JointModel):
