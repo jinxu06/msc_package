@@ -20,6 +20,7 @@ from keras.callbacks import EarlyStopping
 from keras.models import load_model
 from scipy.stats import poisson
 from contrib import resample_with_replacement
+from sklearn.mixture import GaussianMixture
 
 
 def log_sum_exp(x, axis=None):
@@ -489,7 +490,7 @@ class MixtureDensityNetwork(ConditionalModel):
                                         size=(num_choices,), replace=False)
             self.hyper_params_choices = [self.hyper_params_choices[s] for s in sel]
 
-    def set_model(self, hyper_params):
+    def set_model(self, hyper_params, targets):
         self.model = Sequential()
         num_hidden_units = hyper_params['num_hidden_units']
         num_hidden_layers = hyper_params['num_hidden_layers']
@@ -507,8 +508,19 @@ class MixtureDensityNetwork(ConditionalModel):
             self.model.add(Dense(hyper_params['num_hidden_units'], activation=activation,
                                             kernel_initializer=kernel_initializer, kernel_regularizer=kernel_regularizer, input_shape=(hyper_params['num_hidden_units'],)))
         if self.base_model=='Gaussian':
+            gmm = GaussianMixture(n_components=self.n_components)
+            K = 10
+            valid_index = range(0, targets.shape[0],K)
+            t_targets = np.delete(targets, valid_index, axis=0)
+            gmm.fit(t_targets[:,None])
+            def init_func(shape, dtype=None):
+                ret = np.zeros((self.n_components * 3, ), dtype=dtype)
+                ret[:self.n_components] = gmm.means_[:,0]
+                ret[self.n_components:self.n_components*2] = np.log(np.sqrt(gmm.covariances_[:,0,0]))
+                ret[-self.n_components:] = np.log(gmm.weights_)
+                return ret
             self.model.add(Dense(self.n_components*3, kernel_initializer=kernel_initializer,
-                            kernel_regularizer=kernel_regularizer, input_shape=(hyper_params['num_hidden_units'],)))
+                            kernel_regularizer=kernel_regularizer, bias_initializer=init_func, input_shape=(hyper_params['num_hidden_units'],)))
             self.model.compile(loss=self._mdn_gaussian_loss, optimizer='adam')
 
         elif self.base_model=='Poisson':
@@ -592,6 +604,22 @@ class MixtureDensityNetwork(ConditionalModel):
             alphas = exponent / np.sum(exponent, axis=1)[:, None]
             #lambdas /= temperature
             return total_counts, probs, alphas
+
+    def search_hyper_params(self, K, train_inputs, train_targets, K_max_run=None, random_max_run=None, verbose=1):
+        if random_max_run is None:
+            random_max_run = len(self.hyper_params_choices)
+        best_hyper_params = None
+        best_err = 1e10
+        for i in range(min(random_max_run, len(self.hyper_params_choices))):
+            hyper_params = self.hyper_params_choices[i]
+            self.set_model(hyper_params, train_targets)
+            e = self.train_K_fold(K, train_inputs, train_targets, K_max_run=K_max_run, verbose=verbose)
+            if e < best_err:
+                best_err = e
+                best_hyper_params = hyper_params
+        self.set_model(best_hyper_params, train_targets)
+        self.fit(train_inputs, train_targets, verbose=verbose)
+        return best_hyper_params, best_err
 
     def save_model(self):
         if self.name is None:
