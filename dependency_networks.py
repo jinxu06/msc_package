@@ -509,10 +509,7 @@ class MixtureDensityNetwork(ConditionalModel):
                                             kernel_initializer=kernel_initializer, kernel_regularizer=kernel_regularizer, input_shape=(hyper_params['num_hidden_units'],)))
         if self.base_model=='Gaussian':
             gmm = GaussianMixture(n_components=self.n_components)
-            K = 10
-            valid_index = range(0, targets.shape[0],K)
-            t_targets = np.delete(targets, valid_index, axis=0)
-            gmm.fit(t_targets[:,None])
+            gmm.fit(targets[:,None])
             def init_func(shape, dtype=None):
                 ret = np.zeros((self.n_components * 3, ), dtype=dtype)
                 ret[:self.n_components] = gmm.means_[:,0]
