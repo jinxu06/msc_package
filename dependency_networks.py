@@ -492,6 +492,8 @@ class MixtureDensityNetwork(ConditionalModel):
                                         size=(num_choices,), replace=False)
             self.hyper_params_choices = [self.hyper_params_choices[s] for s in sel]
 
+
+
     def set_model(self, hyper_params, targets):
         self.model = Sequential()
         num_hidden_units = hyper_params['num_hidden_units']
@@ -519,7 +521,7 @@ class MixtureDensityNetwork(ConditionalModel):
                 ret[-self.n_components:] = np.log(gmm.weights_)
                 return tf.constant(ret, dtype=dtype)
 
-            self.bias_init = init_func
+            self.bias_init = lambda s, d: init_func(s, d)
             self.model.add(Dense(self.n_components*3, #kernel_initializer=kernel_initializer,
                             kernel_regularizer=kernel_regularizer, bias_initializer=self.bias_init, input_shape=(hyper_params['num_hidden_units'],)))
             self.model.compile(loss=self._mdn_gaussian_loss, optimizer='adam')
