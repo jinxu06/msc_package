@@ -472,8 +472,6 @@ class BaggingPoissonConditionalModel(ConditionalModel):
 
 class MixtureDensityNetwork(ConditionalModel):
 
-    init_func = None
-
     def __init__(self, base_model, hyper_params, inputs_dim, random=True, name=None):
         self.inputs_dim = inputs_dim
         self.base_model = base_model
@@ -523,6 +521,7 @@ class MixtureDensityNetwork(ConditionalModel):
                 ret[self.n_components:self.n_components*2] = np.log(np.sqrt(gmm.covariances_[:,0,0]))
                 ret[-self.n_components:] = np.log(gmm.weights_)
                 return tf.constant(ret, dtype=dtype)
+
 
             self.model.add(Dense(self.n_components*3, #kernel_initializer=kernel_initializer,
                             kernel_regularizer=kernel_regularizer, bias_initializer=init_func, input_shape=(hyper_params['num_hidden_units'],)))
@@ -633,6 +632,7 @@ class MixtureDensityNetwork(ConditionalModel):
         self.model.save("../models/{0}.h5".format(self.name))
 
     def load_model(self):
+        global init_func
         self.model = load_model("../models/{0}.h5".format(self.name), custom_objects=self.custom_objects)
 
     def delete_model(self):
