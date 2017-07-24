@@ -494,7 +494,7 @@ class MixtureDensityNetwork(ConditionalModel):
 
 
 
-    def set_model(self, hyper_params, targets):
+    def set_model(self, hyper_params):
         self.model = Sequential()
         num_hidden_units = hyper_params['num_hidden_units']
         num_hidden_layers = hyper_params['num_hidden_layers']
@@ -610,21 +610,7 @@ class MixtureDensityNetwork(ConditionalModel):
             #lambdas /= temperature
             return total_counts, probs, alphas
 
-    def search_hyper_params(self, K, train_inputs, train_targets, K_max_run=None, random_max_run=None, verbose=1):
-        if random_max_run is None:
-            random_max_run = len(self.hyper_params_choices)
-        best_hyper_params = None
-        best_err = 1e10
-        for i in range(min(random_max_run, len(self.hyper_params_choices))):
-            hyper_params = self.hyper_params_choices[i]
-            self.set_model(hyper_params, train_targets)
-            e = self.train_K_fold(K, train_inputs, train_targets, K_max_run=K_max_run, verbose=verbose)
-            if e < best_err:
-                best_err = e
-                best_hyper_params = hyper_params
-        self.set_model(best_hyper_params, train_targets)
-        self.fit(train_inputs, train_targets, verbose=verbose)
-        return best_hyper_params, best_err
+
 
     def save_model(self):
         if self.name is None:
