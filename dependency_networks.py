@@ -475,12 +475,14 @@ class MixtureDensityNetwork(ConditionalModel):
     def __init__(self, base_model, hyper_params, inputs_dim, random=True, name=None):
         self.inputs_dim = inputs_dim
         self.base_model = base_model
+        self.custom_objects = {}
         if self.base_model == "Gaussian":
-            self.loss_func = "_mdn_gaussian_loss"
+            self.custom_objects["_mdn_gaussian_loss"] = self._mdn_gaussian_loss
         elif self.base_model == "Poisson":
-            self.loss_func = "_mdn_poisson_loss"
+            self.custom_objects["_mdn_poisson_loss"] = self._mdn_poisson_loss
         elif self.base_model == "NegativeBinomial":
-            self.loss_func = "_mdn_negative_binomial_loss"
+            self.custom_objects["_mdn_negative_binomial_loss"] = self._mdn_negative_binomial_loss
+
         self.hyper_params_choices = enumerate_parameters(hyper_params)
         self.name = name
         self.n_components = None
@@ -519,6 +521,7 @@ class MixtureDensityNetwork(ConditionalModel):
             self.model.add(Dense(self.n_components*3, #kernel_initializer=kernel_initializer,
                             kernel_regularizer=kernel_regularizer, bias_initializer=init_func, input_shape=(hyper_params['num_hidden_units'],)))
             self.model.compile(loss=self._mdn_gaussian_loss, optimizer='adam')
+            self.custom_objects["init_func"] = init_func
 
         elif self.base_model=='Poisson':
             self.model.add(Dense(self.n_components*2, kernel_initializer=kernel_initializer,
