@@ -518,10 +518,12 @@ class MixtureDensityNetwork(ConditionalModel):
                 ret[self.n_components:self.n_components*2] = np.log(np.sqrt(gmm.covariances_[:,0,0]))
                 ret[-self.n_components:] = np.log(gmm.weights_)
                 return tf.constant(ret, dtype=dtype)
+
+            self.bias_init = init_func
             self.model.add(Dense(self.n_components*3, #kernel_initializer=kernel_initializer,
-                            kernel_regularizer=kernel_regularizer, bias_initializer=init_func, input_shape=(hyper_params['num_hidden_units'],)))
+                            kernel_regularizer=kernel_regularizer, bias_initializer=self.bias_init, input_shape=(hyper_params['num_hidden_units'],)))
             self.model.compile(loss=self._mdn_gaussian_loss, optimizer='adam')
-            self.custom_objects["init_func"] = init_func
+            self.custom_objects["bias_init"] = self.bias_init
 
         elif self.base_model=='Poisson':
             self.model.add(Dense(self.n_components*2, kernel_initializer=kernel_initializer,
