@@ -521,7 +521,7 @@ class MixtureDensityNetwork(ConditionalModel):
                 ret[-self.n_components:] = np.log(gmm.weights_)
                 return tf.constant(ret, dtype=dtype)
 
-            self.bias_init = lambda s, d: init_func(s, d)
+            self.bias_init = lambda s, d=None: init_func(s, d)
             self.model.add(Dense(self.n_components*3, #kernel_initializer=kernel_initializer,
                             kernel_regularizer=kernel_regularizer, bias_initializer=self.bias_init, input_shape=(hyper_params['num_hidden_units'],)))
             self.model.compile(loss=self._mdn_gaussian_loss, optimizer='adam')
