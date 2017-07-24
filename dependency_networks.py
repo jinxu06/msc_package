@@ -571,7 +571,7 @@ class MixtureDensityNetwork(ConditionalModel):
     def fit(self, X, y, max_num_epochs=500, validation_split=0.2, batch_size=100, verbose=1):
         if self.base_model=='Gaussian':
             gmm = GaussianMixture(n_components=self.n_components)
-            gmm.fit(targets[:,None])
+            gmm.fit(y[:,None])
             ret = np.zeros((self.n_components * 3, ))
             ret[:self.n_components] = gmm.means_[:,0]
             ret[self.n_components:self.n_components*2] = np.log(np.sqrt(gmm.covariances_[:,0,0]))
