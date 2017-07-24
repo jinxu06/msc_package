@@ -627,7 +627,7 @@ class MixtureDensityNetwork(ConditionalModel):
         self.model.save("../models/{0}.h5".format(self.name))
 
     def load_model(self):
-        self.model = load_model("../models/{0}.h5".format(self.name), custom_objects={self.loss_func: eval("self.{0}".format(self.loss_func))})
+        self.model = load_model("../models/{0}.h5".format(self.name), custom_objects=self.custom_objects)
 
     def delete_model(self):
         os.remove("../models/{0}.h5".format(self.name))
