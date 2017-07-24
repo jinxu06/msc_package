@@ -512,21 +512,11 @@ class MixtureDensityNetwork(ConditionalModel):
             self.model.add(Dense(hyper_params['num_hidden_units'], activation=activation,
                                             kernel_initializer=kernel_initializer, kernel_regularizer=kernel_regularizer, input_shape=(hyper_params['num_hidden_units'],)))
         if self.base_model=='Gaussian':
-            gmm = GaussianMixture(n_components=self.n_components)
-            gmm.fit(targets[:,None])
-            global init_func
-            def init_func(shape, dtype=None):
-                ret = np.zeros((self.n_components * 3, ))
-                ret[:self.n_components] = gmm.means_[:,0]
-                ret[self.n_components:self.n_components*2] = np.log(np.sqrt(gmm.covariances_[:,0,0]))
-                ret[-self.n_components:] = np.log(gmm.weights_)
-                return tf.constant(ret, dtype=dtype)
 
 
             self.model.add(Dense(self.n_components*3, #kernel_initializer=kernel_initializer,
-                            kernel_regularizer=kernel_regularizer, bias_initializer=init_func, input_shape=(hyper_params['num_hidden_units'],)))
+                            kernel_regularizer=kernel_regularizer, input_shape=(hyper_params['num_hidden_units'],)))
             self.model.compile(loss=self._mdn_gaussian_loss, optimizer='adam')
-            self.custom_objects["init_func"] = init_func
 
         elif self.base_model=='Poisson':
             self.model.add(Dense(self.n_components*2, kernel_initializer=kernel_initializer,
@@ -579,6 +569,16 @@ class MixtureDensityNetwork(ConditionalModel):
         return res
 
     def fit(self, X, y, max_num_epochs=500, validation_split=0.2, batch_size=100, verbose=1):
+        if self.base_model=='Gaussian':
+            gmm = GaussianMixture(n_components=self.n_components)
+            gmm.fit(targets[:,None])
+            ret = np.zeros((self.n_components * 3, ))
+            ret[:self.n_components] = gmm.means_[:,0]
+            ret[self.n_components:self.n_components*2] = np.log(np.sqrt(gmm.covariances_[:,0,0]))
+            ret[-self.n_components:] = np.log(gmm.weights_)
+            w = self.model.layers[-1].get_weights()
+            w[-1] = ret
+            self.model.layers[-1].set_weights(w)
         early_stopping = EarlyStopping(monitor='val_loss', patience=2)
         self.model.fit(X, y, validation_split=validation_split, callbacks=[early_stopping], epochs=max_num_epochs,  batch_size=batch_size, verbose=verbose)
 
