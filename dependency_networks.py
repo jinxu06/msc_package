@@ -472,6 +472,8 @@ class BaggingPoissonConditionalModel(ConditionalModel):
 
 class MixtureDensityNetwork(ConditionalModel):
 
+    init_func = None
+
     def __init__(self, base_model, hyper_params, inputs_dim, random=True, name=None):
         self.inputs_dim = inputs_dim
         self.base_model = base_model
@@ -514,6 +516,7 @@ class MixtureDensityNetwork(ConditionalModel):
         if self.base_model=='Gaussian':
             gmm = GaussianMixture(n_components=self.n_components)
             gmm.fit(targets[:,None])
+            global init_func
             def init_func(shape, dtype=None):
                 ret = np.zeros((self.n_components * 3, ))
                 ret[:self.n_components] = gmm.means_[:,0]
@@ -521,11 +524,10 @@ class MixtureDensityNetwork(ConditionalModel):
                 ret[-self.n_components:] = np.log(gmm.weights_)
                 return tf.constant(ret, dtype=dtype)
 
-            self.bias_init = lambda s, d=None: init_func(s, d)
             self.model.add(Dense(self.n_components*3, #kernel_initializer=kernel_initializer,
-                            kernel_regularizer=kernel_regularizer, bias_initializer=self.bias_init, input_shape=(hyper_params['num_hidden_units'],)))
+                            kernel_regularizer=kernel_regularizer, bias_initializer=init_func, input_shape=(hyper_params['num_hidden_units'],)))
             self.model.compile(loss=self._mdn_gaussian_loss, optimizer='adam')
-            self.custom_objects["bias_init"] = self.bias_init
+            self.custom_objects["init_func"] = init_func
 
         elif self.base_model=='Poisson':
             self.model.add(Dense(self.n_components*2, kernel_initializer=kernel_initializer,
