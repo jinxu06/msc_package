@@ -508,19 +508,15 @@ class MixtureDensityNetwork(ConditionalModel):
             self.model.add(Dense(hyper_params['num_hidden_units'], activation=activation,
                                             kernel_initializer=kernel_initializer, kernel_regularizer=kernel_regularizer, input_shape=(hyper_params['num_hidden_units'],)))
         if self.base_model=='Gaussian':
-            bias_feed = tf.placeholder(tf.float32, (3*self.n_components), "bias init")
-            bias_initial_values = bias_feed * 1.
             gmm = GaussianMixture(n_components=self.n_components)
             gmm.fit(targets[:,None])
             def init_func(shape, dtype=None):
-                ret = np.zeros((self.n_components * 3, ), dtype=dtype)
+                ret = np.zeros((self.n_components * 3, ))
                 ret[:self.n_components] = gmm.means_[:,0]
                 ret[self.n_components:self.n_components*2] = np.log(np.sqrt(gmm.covariances_[:,0,0]))
                 ret[-self.n_components:] = np.log(gmm.weights_)
-                sess = K.get_session()
-                sess.run(bias_initial_values, feed_dict={bias_feed:ret})
-                return bias_initial_values
-            self.model.add(Dense(self.n_components*3, kernel_initializer=kernel_initializer,
+                return tf.constant(ret, dtype=dtype)
+            self.model.add(Dense(self.n_components*3, #kernel_initializer=kernel_initializer,
                             kernel_regularizer=kernel_regularizer, bias_initializer=init_func, input_shape=(hyper_params['num_hidden_units'],)))
             self.model.compile(loss=self._mdn_gaussian_loss, optimizer='adam')
 
