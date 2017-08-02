@@ -91,6 +91,7 @@ class ConditionalModel(object):
         os.remove("../models/{0}.pkl".format(self.name))
 
 
+
 class GANDependencyNetwork(object):
 
     def __init__(self, hyper_params, noise_generator, inputs_dim, prior_dim, inputs_block, attr_types, random=False, name="GDN"):
@@ -385,8 +386,6 @@ class GenerativeAdversarialNetwork(object):
             return discriminator_optimizer
 
 
-
-
 class PoissonConditionalModel(ConditionalModel):
 
     def __init__(self, hyper_params, random=True, name=None):
@@ -416,8 +415,6 @@ class PoissonConditionalModel(ConditionalModel):
     def predict_proba(self, X, temperature=1.):
         preds = self.model.predict(xgb.DMatrix(X))
         return preds[:, None], np.ones((preds.shape[0],1))
-
-
 
 
 class BaggingPoissonConditionalModel(ConditionalModel):
