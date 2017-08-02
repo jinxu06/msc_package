@@ -90,6 +90,7 @@ class ConditionalModel(object):
     def delete_model(self):
         os.remove("../models/{0}.pkl".format(self.name))
 
+class
 
 class GANDependencyNetwork(object):
 
@@ -385,8 +386,6 @@ class GenerativeAdversarialNetwork(object):
             return discriminator_optimizer
 
 
-
-
 class PoissonConditionalModel(ConditionalModel):
 
     def __init__(self, hyper_params, random=True, name=None):
@@ -416,8 +415,6 @@ class PoissonConditionalModel(ConditionalModel):
     def predict_proba(self, X, temperature=1.):
         preds = self.model.predict(xgb.DMatrix(X))
         return preds[:, None], np.ones((preds.shape[0],1))
-
-
 
 
 class BaggingPoissonConditionalModel(ConditionalModel):
@@ -592,8 +589,9 @@ class MixtureDensityNetwork(ConditionalModel):
             mus = pred[:, :self.n_components]
             sigmas = np.exp(pred[:, self.n_components:self.n_components*2])
             exponent = np.exp(pred[:, self.n_components*2:] - np.max(pred[:, self.n_components*2:], axis=1)[:, None])
+            exponent = exponent ** temperature
             alphas = exponent / np.sum(exponent, axis=1)[:, None]
-            sigmas /= temperature
+            sigmas /= np.sqrt(temperature)
             return mus, sigmas, alphas
         elif self.base_model == 'Poisson':
             lambdas = np.exp(pred[:, :self.n_components])
