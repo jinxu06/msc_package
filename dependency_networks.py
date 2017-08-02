@@ -514,7 +514,7 @@ class MixtureDensityNetwork(ConditionalModel):
         if self.base_model=='Gaussian':
 
 
-            self.model.add(Dense(self.n_components*3, #kernel_initializer=kernel_initializer,
+            self.model.add(Dense(self.n_components*3, kernel_initializer=kernel_initializer,
                             kernel_regularizer=kernel_regularizer, input_shape=(hyper_params['num_hidden_units'],)))
             self.model.compile(loss=self._mdn_gaussian_loss, optimizer='adam')
 
@@ -568,18 +568,22 @@ class MixtureDensityNetwork(ConditionalModel):
         res = - Kb.mean(res)
         return res
 
-    def fit(self, X, y, max_num_epochs=500, validation_split=0.2, batch_size=100, verbose=1):
+    def fit(self, X, y, max_num_epochs=500, validation_split=0.1, batch_size=100, verbose=1):
+        """
         if self.base_model=='Gaussian':
-            gmm = GaussianMixture(n_components=self.n_components)
+            n_components = self.n_components
+            gmm = GaussianMixture(n_components=n_components)
             gmm.fit(y[:,None])
-            ret = np.zeros((self.n_components * 3, ))
-            ret[:self.n_components] = gmm.means_[:,0]
-            ret[self.n_components:self.n_components*2] = np.log(np.sqrt(gmm.covariances_[:,0,0]))
-            ret[-self.n_components:] = np.log(gmm.weights_)
+            ret = np.zeros((n_components * 3, ))
+            ret[:n_components] = gmm.means_[:,0]
+            ret[n_components:n_components*2] = np.log(np.sqrt(gmm.covariances_[:,0,0]))
+            ret[-n_components:] = np.log(gmm.weights_)
+            # ret = np.concatenate([ret.copy() for i in range(self.n_components / n_components)], axis=0)
             w = self.model.layers[-1].get_weights()
             w[-1] = ret
             self.model.layers[-1].set_weights(w)
-        early_stopping = EarlyStopping(monitor='val_loss', patience=2)
+        """
+        early_stopping = EarlyStopping(monitor='val_loss', patience=5)
         self.model.fit(X, y, validation_split=validation_split, callbacks=[early_stopping], epochs=max_num_epochs,  batch_size=batch_size, verbose=verbose)
 
     def evaluate(self, X, y, batch_size=100):
@@ -592,8 +596,9 @@ class MixtureDensityNetwork(ConditionalModel):
             mus = pred[:, :self.n_components]
             sigmas = np.exp(pred[:, self.n_components:self.n_components*2])
             exponent = np.exp(pred[:, self.n_components*2:] - np.max(pred[:, self.n_components*2:], axis=1)[:, None])
+            exponent = exponent ** temperature
             alphas = exponent / np.sum(exponent, axis=1)[:, None]
-            sigmas /= temperature
+            sigmas /= np.sqrt(temperature)
             return mus, sigmas, alphas
         elif self.base_model == 'Poisson':
             lambdas = np.exp(pred[:, :self.n_components])
