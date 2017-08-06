@@ -147,6 +147,18 @@ class MLPConditionalModel(ConditionalModel):
         y = one_hot_encoding(y)
         return self.model.evaluate(X, y, batch_size=batch_size)
 
+    def save_model(self):
+        if self.name is None:
+            self.name = "MLP{0}".format(hash(self.model))
+        self.model.save("../models/{0}.h5".format(self.name))
+
+    def load_model(self):
+        global init_func
+        self.model = load_model("../models/{0}.h5".format(self.name))
+
+    def delete_model(self):
+        os.remove("../models/{0}.h5".format(self.name))
+
 
 class GANDependencyNetwork(object):
 
@@ -810,6 +822,8 @@ class NDependencyNetwork(object):
                 model = PoissonConditionalModel(hyper_params)
             elif str(method[0])==str(BaggingPoissonConditionalModel):
                 model = BaggingPoissonConditionalModel(hyper_params)
+            elif str(method[0])==str(MLPConditionalModel):
+                model = MLPConditionalModel(train_inputs.shape[1], num_classes, hyper_params, random=True, name=self.name+str(block[0]))
             else:
                 raise Exception("model not found")
             self.models.append(model)
