@@ -779,7 +779,7 @@ class NDependencyNetwork(object):
             elif str(method[0])==str(BaggingPoissonConditionalModel):
                 model = BaggingPoissonConditionalModel(hyper_params, random=True, name=self.name+str(block[0]))
             elif str(method[0])==str(MLPConditionalModel):
-                model = MLPConditionalModel(train_inputs.shape[1], block[1]-block[0], hyper_params, random=True, name=self.name+str(block[0]))
+                model = MLPConditionalModel(train_inputs.shape[1], num_classes, hyper_params, random=True, name=self.name+str(block[0]))
             else:
                 raise Exception("model not found")
             cur = time.time()
