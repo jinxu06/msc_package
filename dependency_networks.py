@@ -125,7 +125,7 @@ class MLPConditionalModel(ConditionalModel):
 
         self.model.add(Dense(self.outputs_dim, kernel_initializer=kernel_initializer,
                             kernel_regularizer=kernel_regularizer, input_shape=(hyper_params['num_hidden_units'],)))
-        self.model.compile(loss=losses.binary_crossentropy, optimizer='adam')
+        self.model.compile(loss=losses.categorical_crossentropy, optimizer='adam')
 
 
     def fit(self, X, y, max_num_epochs=500, validation_split=0.2, batch_size=100, verbose=1):
@@ -139,8 +139,8 @@ class MLPConditionalModel(ConditionalModel):
         pred = pred.astype(np.float64)
 
         pred /= np.sum(pred, axis=1)[:, None]
-        #pred = pred** temperature
-        #pred /= np.sum(pred, axis=1)[:, None]
+        pred = pred** temperature
+        pred /= np.sum(pred, axis=1)[:, None]
         return pred
 
     def evaluate(self, X, y, batch_size=100):
