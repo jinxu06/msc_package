@@ -135,6 +135,7 @@ class MLPConditionalModel(ConditionalModel):
     def predict_proba(self, X, temperature=1.0):
         pred = self.model.predict(X)
         pred = pred.astype(np.float64)
+        return pred
 
     def evaluate(self, X, y, batch_size=100):
         return self.model.evaluate(X, y, batch_size=batch_size)
