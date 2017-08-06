@@ -131,7 +131,7 @@ class MLPConditionalModel(ConditionalModel):
 
     def fit(self, X, y, max_num_epochs=500, validation_split=0.2, batch_size=100, verbose=1):
         y = one_hot_encoding(y)
-        early_stopping = EarlyStopping(monitor='val_loss', patience=2)
+        early_stopping = EarlyStopping(monitor='val_loss', patience=5)
         self.model.fit(X, y, validation_split=validation_split, callbacks=[early_stopping], epochs=max_num_epochs,  batch_size=batch_size, verbose=verbose)
 
 
