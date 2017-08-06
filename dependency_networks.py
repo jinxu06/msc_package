@@ -139,8 +139,8 @@ class MLPConditionalModel(ConditionalModel):
         pred = pred.astype(np.float64)
 
         pred /= np.sum(pred, axis=1)[:, None]
-        pred = pred** temperature
-        pred /= np.sum(pred, axis=1)[:, None]
+        #pred = pred** temperature
+        #pred /= np.sum(pred, axis=1)[:, None]
         return pred
 
     def evaluate(self, X, y, batch_size=100):
