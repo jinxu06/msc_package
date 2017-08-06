@@ -15,6 +15,7 @@ from keras.models import Sequential
 from keras.layers import Dense, Activation
 from keras import regularizers
 from keras import initializers
+from keras import losses
 
 from keras.callbacks import EarlyStopping
 from keras.models import load_model
@@ -89,6 +90,54 @@ class ConditionalModel(object):
 
     def delete_model(self):
         os.remove("../models/{0}.pkl".format(self.name))
+
+
+class MLPConditionalModel(ConditionalModel):
+
+    def __init__(self, inputs_dim, outputs_dim, hyper_params, random=True, name=None):
+        self.inputs_dim = inputs_dim
+        self.outputs_dim = outputs_dim
+        self.hyper_params_choices = enumerate_parameters(hyper_params)
+        self.name = name
+        if random:
+            num_choices = len(self.hyper_params_choices)
+            sel = np.random.choice(range(num_choices),
+                                        size=(num_choices,), replace=False)
+            self.hyper_params_choices = [self.hyper_params_choices[s] for s in sel]
+
+    def set_model(self, hyper_params):
+        self.model = Sequential()
+        num_hidden_units = hyper_params['num_hidden_units']
+        num_hidden_layers = hyper_params['num_hidden_layers']
+        activation = hyper_params['activation']
+        l2_scale = hyper_params['l2_scale']
+
+        kernel_initializer = initializers.glorot_uniform(seed=123)
+        kernel_regularizer = regularizers.l2(l2_scale)
+
+
+        self.model.add(Dense(hyper_params['num_hidden_units'], activation=activation,
+                                        kernel_initializer=kernel_initializer, kernel_regularizer=kernel_regularizer, input_shape=(self.inputs_dim,)))
+        for l in range(hyper_params['num_hidden_layers']-1):
+            self.model.add(Dense(hyper_params['num_hidden_units'], activation=activation,
+                                            kernel_initializer=kernel_initializer, kernel_regularizer=kernel_regularizer, input_shape=(hyper_params['num_hidden_units'],)))
+
+        self.model.add(Dense(self.outputs_dim, kernel_initializer=kernel_initializer,
+                            kernel_regularizer=kernel_regularizer, input_shape=(hyper_params['num_hidden_units'],)))
+        self.model.compile(loss=losses.binary_crossentropy, optimizer='adam')
+
+
+    def fit(self, X, y, max_num_epochs=500, validation_split=0.2, batch_size=100, verbose=1):
+        early_stopping = EarlyStopping(monitor='val_loss', patience=2)
+        self.model.fit(X, y, validation_split=validation_split, callbacks=[early_stopping], epochs=max_num_epochs,  batch_size=batch_size, verbose=verbose)
+
+
+    def predict_proba(self, X):
+        pred = self.model.predict(X)
+        pred = pred.astype(np.float64)
+
+    def evaluate(self, X, y, batch_size=100):
+        return self.model.evaluate(X, y, batch_size=batch_size)
 
 
 class GANDependencyNetwork(object):
@@ -724,6 +773,8 @@ class NDependencyNetwork(object):
                 model = PoissonConditionalModel(hyper_params, random=True, name=self.name+str(block[0]))
             elif str(method[0])==str(BaggingPoissonConditionalModel):
                 model = BaggingPoissonConditionalModel(hyper_params, random=True, name=self.name+str(block[0]))
+            elif str(method[0])==str(MLPConditionalModel):
+                model = MLPConditionalModel(train_inputs.shape[1], block[1]-block[0], hyper_params, random=True, name=self.name+str(block[0]))
             else:
                 raise Exception("model not found")
             cur = time.time()
