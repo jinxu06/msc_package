@@ -132,7 +132,7 @@ class MLPConditionalModel(ConditionalModel):
         self.model.fit(X, y, validation_split=validation_split, callbacks=[early_stopping], epochs=max_num_epochs,  batch_size=batch_size, verbose=verbose)
 
 
-    def predict_proba(self, X):
+    def predict_proba(self, X, temperature=1.0):
         pred = self.model.predict(X)
         pred = pred.astype(np.float64)
 
