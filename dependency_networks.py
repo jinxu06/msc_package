@@ -135,6 +135,10 @@ class MLPConditionalModel(ConditionalModel):
     def predict_proba(self, X, temperature=1.0):
         pred = self.model.predict(X)
         pred = pred.astype(np.float64)
+
+        pred /= np.sum(pred, axis=1)[:, None]
+        pred = pred** temperature
+        pred /= np.sum(pred, axis=1)[:, None]
         return pred
 
     def evaluate(self, X, y, batch_size=100):
