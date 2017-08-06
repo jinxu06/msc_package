@@ -8,6 +8,7 @@ import time
 import cPickle as pkl
 import os
 from contrib import enumerate_parameters
+from contrib import one_hot_encoding
 from classifiers import SklearnClassifier
 
 from keras import backend as Kb
@@ -128,6 +129,7 @@ class MLPConditionalModel(ConditionalModel):
 
 
     def fit(self, X, y, max_num_epochs=500, validation_split=0.2, batch_size=100, verbose=1):
+        y = one_hot_encoding(y)
         early_stopping = EarlyStopping(monitor='val_loss', patience=2)
         self.model.fit(X, y, validation_split=validation_split, callbacks=[early_stopping], epochs=max_num_epochs,  batch_size=batch_size, verbose=verbose)
 
@@ -142,6 +144,7 @@ class MLPConditionalModel(ConditionalModel):
         return pred
 
     def evaluate(self, X, y, batch_size=100):
+        y = one_hot_encoding(y)
         return self.model.evaluate(X, y, batch_size=batch_size)
 
 
