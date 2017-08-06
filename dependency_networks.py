@@ -125,6 +125,7 @@ class MLPConditionalModel(ConditionalModel):
 
         self.model.add(Dense(self.outputs_dim, kernel_initializer=kernel_initializer,
                             kernel_regularizer=kernel_regularizer, input_shape=(hyper_params['num_hidden_units'],)))
+        self.model.add(Activation('softmax'))
         self.model.compile(loss=losses.categorical_crossentropy, optimizer='adam')
 
 
@@ -137,10 +138,10 @@ class MLPConditionalModel(ConditionalModel):
     def predict_proba(self, X, temperature=1.0):
         pred = self.model.predict(X)
         pred = pred.astype(np.float64)
-
         pred /= np.sum(pred, axis=1)[:, None]
         pred = pred** temperature
         pred /= np.sum(pred, axis=1)[:, None]
+        #print "--", np.sum(np.sum(pred, axis=1)>1.0)
         return pred
 
     def evaluate(self, X, y, batch_size=100):
